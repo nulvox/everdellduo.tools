@@ -263,6 +263,40 @@ func StartChapterGame(c *Campaign, chapterIndex int, id string, gameType GameTyp
 	return &c.Chapters[chapterIndex].Games[len(c.Chapters[chapterIndex].Games)-1], nil
 }
 
+// ErrChapterNotFound is returned when a chapter operation references an
+// out-of-range chapter index.
+var ErrChapterNotFound = errors.New("chapter not found")
+
+// ErrChapterGameNotFound is returned when a chapter-game operation
+// references an out-of-range game index within the chapter.
+var ErrChapterGameNotFound = errors.New("chapter game not found")
+
+// RemoveChapter deletes the chapter at index i, along with every game
+// attempt (and thus scorecard history) it contains. This is destructive -
+// callers should confirm with the user before calling it.
+func RemoveChapter(c *Campaign, i int) error {
+	if i < 0 || i >= len(c.Chapters) {
+		return ErrChapterNotFound
+	}
+	c.Chapters = append(c.Chapters[:i], c.Chapters[i+1:]...)
+	return nil
+}
+
+// RemoveChapterGame deletes the game attempt at gameIndex within the
+// chapter at chapterIndex. If that attempt was completed, its score no
+// longer contributes to the running scorecard once removed.
+func RemoveChapterGame(c *Campaign, chapterIndex, gameIndex int) error {
+	if chapterIndex < 0 || chapterIndex >= len(c.Chapters) {
+		return ErrChapterNotFound
+	}
+	games := c.Chapters[chapterIndex].Games
+	if gameIndex < 0 || gameIndex >= len(games) {
+		return ErrChapterGameNotFound
+	}
+	c.Chapters[chapterIndex].Games = append(games[:gameIndex], games[gameIndex+1:]...)
+	return nil
+}
+
 // Touch updates a group's UpdatedAt timestamp. Call after any mutation
 // before persisting.
 func Touch(g *Group) {

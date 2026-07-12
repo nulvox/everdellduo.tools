@@ -134,6 +134,40 @@ func TestMarkerAndComplete(t *testing.T) {
 	}
 }
 
+func TestRemoveChapter(t *testing.T) {
+	campaign := Campaign{}
+	AddChapter(&campaign, "Chapter 1")
+	AddChapter(&campaign, "Chapter 2")
+	if err := RemoveChapter(&campaign, 0); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(campaign.Chapters) != 1 || campaign.Chapters[0].Name != "Chapter 2" {
+		t.Fatalf("expected only Chapter 2 to remain, got %+v", campaign.Chapters)
+	}
+	if err := RemoveChapter(&campaign, 5); err != ErrChapterNotFound {
+		t.Fatalf("expected ErrChapterNotFound, got %v", err)
+	}
+}
+
+func TestRemoveChapterGame(t *testing.T) {
+	campaign := Campaign{}
+	AddChapter(&campaign, "Chapter 1")
+	_, _ = StartChapterGame(&campaign, 0, "g1", GameTypeChallenge, []string{"Ash"})
+	_, _ = StartChapterGame(&campaign, 0, "g2", GameTypeChallenge, []string{"Ash"})
+	if err := RemoveChapterGame(&campaign, 0, 0); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(campaign.Chapters[0].Games) != 1 || campaign.Chapters[0].Games[0].ID != "g2" {
+		t.Fatalf("expected only g2 to remain, got %+v", campaign.Chapters[0].Games)
+	}
+	if err := RemoveChapterGame(&campaign, 0, 9); err != ErrChapterGameNotFound {
+		t.Fatalf("expected ErrChapterGameNotFound, got %v", err)
+	}
+	if err := RemoveChapterGame(&campaign, 9, 0); err != ErrChapterNotFound {
+		t.Fatalf("expected ErrChapterNotFound, got %v", err)
+	}
+}
+
 func TestNextSeasonProgression(t *testing.T) {
 	cases := []struct {
 		in       Season

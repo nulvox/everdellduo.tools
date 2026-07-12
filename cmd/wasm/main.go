@@ -99,6 +99,41 @@ func addChapter(args []js.Value) string {
 	return ok(campaign)
 }
 
+// removeChapter(campaignJSON, chapterIndex) -> Campaign
+func removeChapter(args []js.Value) string {
+	var campaign model.Campaign
+	if err := json.Unmarshal([]byte(arg(args, 0)), &campaign); err != nil {
+		return fail(err)
+	}
+	var chapterIndex int
+	if err := json.Unmarshal([]byte(arg(args, 1)), &chapterIndex); err != nil {
+		return fail(err)
+	}
+	if err := model.RemoveChapter(&campaign, chapterIndex); err != nil {
+		return fail(err)
+	}
+	return ok(campaign)
+}
+
+// removeChapterGame(campaignJSON, chapterIndex, gameIndex) -> Campaign
+func removeChapterGame(args []js.Value) string {
+	var campaign model.Campaign
+	if err := json.Unmarshal([]byte(arg(args, 0)), &campaign); err != nil {
+		return fail(err)
+	}
+	var chapterIndex, gameIndex int
+	if err := json.Unmarshal([]byte(arg(args, 1)), &chapterIndex); err != nil {
+		return fail(err)
+	}
+	if err := json.Unmarshal([]byte(arg(args, 2)), &gameIndex); err != nil {
+		return fail(err)
+	}
+	if err := model.RemoveChapterGame(&campaign, chapterIndex, gameIndex); err != nil {
+		return fail(err)
+	}
+	return ok(campaign)
+}
+
 // mutateGame applies a named operation to a Game and returns the updated Game.
 // mutateGame(gameJSON, op, argsJSON) -> Game
 func mutateGame(args []js.Value) string {
@@ -255,6 +290,8 @@ func importBackup(args []js.Value) string {
 func main() {
 	js.Global().Set("everdellduoNewGroup", wrap(newGroup))
 	js.Global().Set("everdellduoAddChapter", wrap(addChapter))
+	js.Global().Set("everdellduoRemoveChapter", wrap(removeChapter))
+	js.Global().Set("everdellduoRemoveChapterGame", wrap(removeChapterGame))
 	js.Global().Set("everdellduoStartChapterGame", wrap(startChapterGame))
 	js.Global().Set("everdellduoMutateGame", wrap(mutateGame))
 	js.Global().Set("everdellduoComputeScorecard", wrap(computeScorecard))

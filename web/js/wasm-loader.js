@@ -41,6 +41,17 @@
     addChapter(campaign, name) {
       return callEnvelope("everdellduoAddChapter", JSON.stringify(campaign), name);
     },
+    removeChapter(campaign, chapterIndex) {
+      return callEnvelope("everdellduoRemoveChapter", JSON.stringify(campaign), JSON.stringify(chapterIndex));
+    },
+    removeChapterGame(campaign, chapterIndex, gameIndex) {
+      return callEnvelope(
+        "everdellduoRemoveChapterGame",
+        JSON.stringify(campaign),
+        JSON.stringify(chapterIndex),
+        JSON.stringify(gameIndex)
+      );
+    },
     startChapterGame(campaign, chapterIndex, gameType, players) {
       return callEnvelope(
         "everdellduoStartChapterGame",

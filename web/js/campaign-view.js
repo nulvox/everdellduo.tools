@@ -41,6 +41,16 @@
           const updatedCampaign = EDWasm.startChapterGame(group.campaign, chapterIndex, gameType, group.players);
           persist({ ...group, campaign: updatedCampaign });
         });
+        card.querySelector(".btn-delete-chapter").addEventListener("click", () => {
+          const gameCount = (chapter.games || []).length;
+          const warning =
+            gameCount > 0
+              ? `Delete "${chapter.name}"? This also deletes its ${gameCount} game(s) and removes them from the scorecard. This cannot be undone.`
+              : `Delete "${chapter.name}"? This cannot be undone.`;
+          if (!confirm(warning)) return;
+          const updatedCampaign = EDWasm.removeChapter(group.campaign, chapterIndex);
+          persist({ ...group, campaign: updatedCampaign });
+        });
 
         const gameList = card.querySelector(".chapter-game-list");
         (chapter.games || []).forEach((game, gameIndex) => {
@@ -50,6 +60,12 @@
           row.querySelector(".btn-resume").addEventListener("click", () =>
             opts.onOpenChapterGame(chapterIndex, gameIndex)
           );
+          row.querySelector(".btn-delete-game").addEventListener("click", () => {
+            const label = game.status === "completed" ? "this completed game (it will be removed from the scorecard)" : "this game";
+            if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+            const updatedCampaign = EDWasm.removeChapterGame(group.campaign, chapterIndex, gameIndex);
+            persist({ ...group, campaign: updatedCampaign });
+          });
           gameList.appendChild(row);
         });
 

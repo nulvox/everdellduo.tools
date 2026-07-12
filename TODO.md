@@ -47,7 +47,7 @@ linting is clean.
 
 ## Phase 5: Polish (Not Yet Started)
 
-- [ ] **5.1** Add a "rename/delete chapter" affordance to the campaign view (currently chapters can only be added, not renamed/removed).
+- [x] **5.1** Add delete affordances: `RemoveChapter`/`RemoveChapterGame` in `internal/model` (tested), `everdellduoRemoveChapter`/`everdellduoRemoveChapterGame` WASM ops, and 🗑 Delete chapter / ✕ delete-game buttons in the campaign view, each with a confirmation prompt. (Group deletion already existed via the group list.) Chapter *renaming* is still open.
 - [ ] **5.2** Add player add/remove UI within an existing group (currently players are fixed at group creation).
 - [ ] **5.3** Add a confirmation step before `Complete game` when required score-breakdown categories are still at 0, to catch accidental early completion.
 - [ ] **5.4** Add a print-friendly campaign scorecard layout in `print.css` (chapter-by-chapter breakdown, not just the running total table).
