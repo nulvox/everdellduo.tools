@@ -18,7 +18,12 @@ import (
 // sun/moon markers are now clamped to [0,6] with meadow-skunk collision
 // avoidance. Backups from v1 will fail to parse cleanly and must be
 // re-exported from an older build if ever needed.
-const BackupVersion = 2
+//
+// v3: Group gained Difficulty; Chapter gained BonusStopwatch; Game gained
+// TeamStopwatches/StartingTeamStopwatches (shared, campaign-only); the
+// per-player "stopwatch" resource was removed in favor of the team-level
+// tracker. Backups from v1/v2 are not compatible.
+const BackupVersion = 3
 
 // Summary is the lightweight manifest entry shown in the group list.
 type Summary struct {

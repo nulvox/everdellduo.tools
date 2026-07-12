@@ -43,6 +43,7 @@
     EDGameTracker.renderGameTracker(root, {
       title: `${group.name} — ${chapter.name}`,
       game,
+      isCampaign: true,
       onChange: (updatedGame) => {
         group.campaign.chapters[chapterIndex].games[gameIndex] = updatedGame;
         group.updatedAt = new Date().toISOString();

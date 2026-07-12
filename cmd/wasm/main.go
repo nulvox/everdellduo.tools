@@ -54,7 +54,7 @@ func wrap(fn func(args []js.Value) string) js.Func {
 	})
 }
 
-// newGroup(name, gameType, playersJSON) -> Group
+// newGroup(name, gameType, playersJSON, difficulty) -> Group
 func newGroup(args []js.Value) string {
 	name := arg(args, 0)
 	gameType := model.GameType(arg(args, 1))
@@ -62,12 +62,13 @@ func newGroup(args []js.Value) string {
 	if err := json.Unmarshal([]byte(arg(args, 2)), &players); err != nil {
 		return fail(err)
 	}
+	difficulty := model.Difficulty(arg(args, 3))
 	id := time.Now().UTC().Format("20060102T150405.000000000")
-	g := model.NewGroup(id, name, gameType, players)
+	g := model.NewGroup(id, name, gameType, players, difficulty)
 	return ok(g)
 }
 
-// startChapterGame(campaignJSON, chapterIndex, gameType, playersJSON) -> {campaign, game}
+// startChapterGame(campaignJSON, chapterIndex, gameType, playersJSON, startingStopwatches) -> Campaign
 func startChapterGame(args []js.Value) string {
 	var campaign model.Campaign
 	if err := json.Unmarshal([]byte(arg(args, 0)), &campaign); err != nil {
@@ -82,20 +83,48 @@ func startChapterGame(args []js.Value) string {
 	if err := json.Unmarshal([]byte(arg(args, 3)), &players); err != nil {
 		return fail(err)
 	}
+	var startingStopwatches int
+	if err := json.Unmarshal([]byte(arg(args, 4)), &startingStopwatches); err != nil {
+		return fail(err)
+	}
 	id := time.Now().UTC().Format("20060102T150405.000000000")
-	if _, err := model.StartChapterGame(&campaign, chapterIndex, id, gameType, players); err != nil {
+	if _, err := model.StartChapterGame(&campaign, chapterIndex, id, gameType, players, startingStopwatches); err != nil {
 		return fail(err)
 	}
 	return ok(campaign)
 }
 
-// addChapter(campaignJSON, name) -> Campaign
+// addChapter(campaignJSON, name, bonusStopwatch) -> Campaign
 func addChapter(args []js.Value) string {
 	var campaign model.Campaign
 	if err := json.Unmarshal([]byte(arg(args, 0)), &campaign); err != nil {
 		return fail(err)
 	}
-	model.AddChapter(&campaign, arg(args, 1))
+	var bonusStopwatch bool
+	if err := json.Unmarshal([]byte(arg(args, 2)), &bonusStopwatch); err != nil {
+		return fail(err)
+	}
+	model.AddChapter(&campaign, arg(args, 1), bonusStopwatch)
+	return ok(campaign)
+}
+
+// setChapterBonusStopwatch(campaignJSON, chapterIndex, bonusStopwatch) -> Campaign
+func setChapterBonusStopwatch(args []js.Value) string {
+	var campaign model.Campaign
+	if err := json.Unmarshal([]byte(arg(args, 0)), &campaign); err != nil {
+		return fail(err)
+	}
+	var chapterIndex int
+	if err := json.Unmarshal([]byte(arg(args, 1)), &chapterIndex); err != nil {
+		return fail(err)
+	}
+	var bonusStopwatch bool
+	if err := json.Unmarshal([]byte(arg(args, 2)), &bonusStopwatch); err != nil {
+		return fail(err)
+	}
+	if err := model.SetChapterBonusStopwatch(&campaign, chapterIndex, bonusStopwatch); err != nil {
+		return fail(err)
+	}
 	return ok(campaign)
 }
 
@@ -246,6 +275,14 @@ func mutateGame(args []js.Value) string {
 		model.RemoveSkunk(&game, p.Index)
 	case "advanceSeason":
 		model.AdvanceSeason(&game)
+	case "adjustTeamStopwatches":
+		var p struct {
+			Delta int `json:"delta"`
+		}
+		if err := json.Unmarshal([]byte(payload), &p); err != nil {
+			return fail(err)
+		}
+		model.AdjustTeamStopwatches(&game, p.Delta)
 	case "completeGame":
 		model.CompleteGame(&game)
 	default:
@@ -290,6 +327,7 @@ func importBackup(args []js.Value) string {
 func main() {
 	js.Global().Set("everdellduoNewGroup", wrap(newGroup))
 	js.Global().Set("everdellduoAddChapter", wrap(addChapter))
+	js.Global().Set("everdellduoSetChapterBonusStopwatch", wrap(setChapterBonusStopwatch))
 	js.Global().Set("everdellduoRemoveChapter", wrap(removeChapter))
 	js.Global().Set("everdellduoRemoveChapterGame", wrap(removeChapterGame))
 	js.Global().Set("everdellduoStartChapterGame", wrap(startChapterGame))

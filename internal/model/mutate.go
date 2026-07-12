@@ -10,10 +10,6 @@ import (
 // that does not exist in the game.
 var ErrPlayerNotFound = errors.New("player not found")
 
-// ErrStopwatchCap is returned when a stopwatch adjustment would push the
-// count outside the 0-2 range.
-var ErrStopwatchCap = errors.New("stopwatch count must stay between 0 and 2")
-
 // ErrInvalidSkunkZone is returned when a skunk operation references a zone
 // other than events, meadow, or farm.
 var ErrInvalidSkunkZone = errors.New("invalid skunk zone")
@@ -36,8 +32,7 @@ func findPlayer(g *Game, name string) *PlayerState {
 }
 
 // AdjustResource changes a named resource for a player by delta (can be
-// negative). Resource values are clamped at 0; the "stopwatch" resource is
-// additionally capped at StopwatchCap.
+// negative). Resource values are clamped at 0.
 func AdjustResource(g *Game, playerName, resource string, delta int) error {
 	p := findPlayer(g, playerName)
 	if p == nil {
@@ -50,11 +45,37 @@ func AdjustResource(g *Game, playerName, resource string, delta int) error {
 	if next < 0 {
 		next = 0
 	}
-	if resource == "stopwatch" && next > StopwatchCap {
-		return ErrStopwatchCap
-	}
 	p.Resources[resource] = next
 	return nil
+}
+
+// AdjustTeamStopwatches changes the shared team stopwatch count for a
+// campaign chapter game by delta (can be negative). Floored at 0; there is
+// no upper cap since a chapter's starting count already reflects
+// difficulty + any chapter bonus.
+func AdjustTeamStopwatches(g *Game, delta int) {
+	next := g.TeamStopwatches + delta
+	if next < 0 {
+		next = 0
+	}
+	g.TeamStopwatches = next
+}
+
+// StopwatchesUsed returns how many of the game's starting team stopwatches
+// have been spent so far (never negative).
+func StopwatchesUsed(g *Game) int {
+	used := g.StartingTeamStopwatches - g.TeamStopwatches
+	if used < 0 {
+		return 0
+	}
+	return used
+}
+
+// StopwatchBonusKept reports whether the team started the game with at
+// least one stopwatch and still has at least one remaining - the
+// condition for recording the chapter's stopwatch bonus.
+func StopwatchBonusKept(g *Game) bool {
+	return g.StartingTeamStopwatches >= 1 && g.TeamStopwatches >= 1
 }
 
 // SetScore sets a player's total score directly.
@@ -247,18 +268,34 @@ func CompleteGame(g *Game) {
 	g.CompletedAt = &now
 }
 
-// AddChapter appends a new empty chapter to a campaign.
-func AddChapter(c *Campaign, name string) {
-	c.Chapters = append(c.Chapters, Chapter{Name: name, Games: []Game{}})
+// AddChapter appends a new empty chapter to a campaign. bonusStopwatch
+// marks whether this chapter grants an extra team stopwatch (see
+// ComputeStartingStopwatches).
+func AddChapter(c *Campaign, name string, bonusStopwatch bool) {
+	c.Chapters = append(c.Chapters, Chapter{Name: name, BonusStopwatch: bonusStopwatch, Games: []Game{}})
+}
+
+// SetChapterBonusStopwatch updates whether the chapter at index i grants a
+// bonus stopwatch. This only affects games started after the change.
+func SetChapterBonusStopwatch(c *Campaign, chapterIndex int, bonusStopwatch bool) error {
+	if chapterIndex < 0 || chapterIndex >= len(c.Chapters) {
+		return ErrChapterNotFound
+	}
+	c.Chapters[chapterIndex].BonusStopwatch = bonusStopwatch
+	return nil
 }
 
 // StartChapterGame starts a new game attempt within the chapter at index i
-// and returns a pointer to it (already appended to the chapter).
-func StartChapterGame(c *Campaign, chapterIndex int, id string, gameType GameType, playerNames []string) (*Game, error) {
+// and returns a pointer to it (already appended to the chapter). Campaign
+// chapter games are always coop. startingStopwatches (see
+// ComputeStartingStopwatches) seeds the shared team stopwatch count.
+func StartChapterGame(c *Campaign, chapterIndex int, id string, gameType GameType, playerNames []string, startingStopwatches int) (*Game, error) {
 	if chapterIndex < 0 || chapterIndex >= len(c.Chapters) {
 		return nil, errors.New("chapter not found")
 	}
 	game := NewGame(id, gameType, playerNames)
+	game.TeamStopwatches = startingStopwatches
+	game.StartingTeamStopwatches = startingStopwatches
 	c.Chapters[chapterIndex].Games = append(c.Chapters[chapterIndex].Games, game)
 	return &c.Chapters[chapterIndex].Games[len(c.Chapters[chapterIndex].Games)-1], nil
 }

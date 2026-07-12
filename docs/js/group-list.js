@@ -53,11 +53,20 @@
   function renderNewGroupForm(root) {
     const view = document.getElementById("tpl-new-group").content.cloneNode(true);
     view.querySelector("#btn-cancel-new-group").addEventListener("click", () => window.EDApp.showGroupList());
+
+    const difficultyFieldset = view.querySelector(".difficulty-picker");
+    view.querySelectorAll('input[name="gameType"]').forEach((radio) => {
+      radio.addEventListener("change", () => {
+        difficultyFieldset.hidden = radio.value !== "campaign";
+      });
+    });
+
     view.querySelector("#form-new-group").addEventListener("submit", (ev) => {
       ev.preventDefault();
       const form = new FormData(ev.target);
       const name = form.get("name").trim();
       const gameType = form.get("gameType");
+      const difficulty = form.get("difficulty") || "normal";
       const players = form
         .get("players")
         .split(",")
@@ -65,7 +74,7 @@
         .filter(Boolean);
       if (!name || !gameType || players.length === 0) return;
 
-      const group = EDWasm.newGroup(name, gameType, players);
+      const group = EDWasm.newGroup(name, gameType, players, difficulty);
       EDStorage.saveGroup(group);
       if (gameType === "campaign") {
         window.EDApp.showCampaign(group.id);

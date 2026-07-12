@@ -75,7 +75,7 @@ main { max-width: 960px; margin: 2rem auto; padding: 0 1rem 3rem; }
   margin-bottom: 1rem;
 }
 
-.season-badge {
+.season-badge, .difficulty-badge {
   background: var(--accent-2);
   color: #fff;
   border-radius: 999px;
@@ -83,6 +83,10 @@ main { max-width: 960px; margin: 2rem auto; padding: 0 1rem 3rem; }
   font-weight: bold;
   font-size: 0.9rem;
 }
+
+.difficulty-picker { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.chapter-bonus-label { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: normal; }
+.form-add-chapter { align-items: center; }
 
 .btn {
   font-family: inherit;

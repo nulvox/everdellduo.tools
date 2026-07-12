@@ -35,11 +35,19 @@
 
   window.EDWasm = {
     ready,
-    newGroup(name, gameType, players) {
-      return callEnvelope("everdellduoNewGroup", name, gameType, JSON.stringify(players));
+    newGroup(name, gameType, players, difficulty) {
+      return callEnvelope("everdellduoNewGroup", name, gameType, JSON.stringify(players), difficulty);
     },
-    addChapter(campaign, name) {
-      return callEnvelope("everdellduoAddChapter", JSON.stringify(campaign), name);
+    addChapter(campaign, name, bonusStopwatch) {
+      return callEnvelope("everdellduoAddChapter", JSON.stringify(campaign), name, JSON.stringify(bonusStopwatch));
+    },
+    setChapterBonusStopwatch(campaign, chapterIndex, bonusStopwatch) {
+      return callEnvelope(
+        "everdellduoSetChapterBonusStopwatch",
+        JSON.stringify(campaign),
+        JSON.stringify(chapterIndex),
+        JSON.stringify(bonusStopwatch)
+      );
     },
     removeChapter(campaign, chapterIndex) {
       return callEnvelope("everdellduoRemoveChapter", JSON.stringify(campaign), JSON.stringify(chapterIndex));
@@ -52,13 +60,14 @@
         JSON.stringify(gameIndex)
       );
     },
-    startChapterGame(campaign, chapterIndex, gameType, players) {
+    startChapterGame(campaign, chapterIndex, gameType, players, startingStopwatches) {
       return callEnvelope(
         "everdellduoStartChapterGame",
         JSON.stringify(campaign),
         JSON.stringify(chapterIndex),
         gameType,
-        JSON.stringify(players)
+        JSON.stringify(players),
+        JSON.stringify(startingStopwatches)
       );
     },
     mutateGame(game, op, payload) {

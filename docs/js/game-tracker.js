@@ -5,7 +5,6 @@
     twig: { icon: "🪵", label: "Twig" },
     resin: { icon: "🔶", label: "Resin" },
     pebble: { icon: "🪨", label: "Pebble" },
-    stopwatch: { icon: "⏱️", label: "Stopwatch" },
   };
 
   const SEASON_META = {
@@ -16,6 +15,8 @@
   };
 
   const SCORE_CATEGORIES = ["cards", "events", "journey", "prosperity", "stopwatches"];
+  // Journey scoring doesn't apply to campaign chapters (always coop).
+  const CAMPAIGN_SCORE_CATEGORIES = SCORE_CATEGORIES.filter((c) => c !== "journey");
 
   const SKUNK_ZONE_LABELS = {
     events: "📜 Events",
@@ -24,9 +25,10 @@
   };
 
   // Renders a live game tracker into `root`.
-  // opts: { title, game, onChange(updatedGame), onBack(), onComplete(updatedGame), hideComplete }
+  // opts: { title, game, onChange(updatedGame), onBack(), onComplete(updatedGame), hideComplete, isCampaign }
   function renderGameTracker(root, opts) {
     let game = opts.game;
+    const scoreCategories = opts.isCampaign ? CAMPAIGN_SCORE_CATEGORIES : SCORE_CATEGORIES;
 
     function persist(newGame) {
       game = newGame;
@@ -77,7 +79,7 @@
           if (
             !confirm(
               "Autumn just ended — the game is over! Double-check each player's score breakdown " +
-                "(cards, events, journey, prosperity, stopwatches) before finalizing. Ready to record the game?"
+                `(${scoreCategories.join(", ")}) before finalizing. Ready to record the game?`
             )
           ) {
             return;
@@ -96,7 +98,7 @@
       });
 
       // Markers (sun / moon)
-      view.querySelectorAll(".marker-row").forEach((row) => {
+      view.querySelectorAll(".marker-row[data-marker]").forEach((row) => {
         const name = row.dataset.marker;
         const value = (game.trackers.markers && game.trackers.markers[name]) || 0;
         row.querySelector(".marker-value").textContent = value;
@@ -167,6 +169,28 @@
         mutate("addSkunk", { zone: addSkunkZoneSelect.value });
       });
 
+      // Team stopwatches (campaign chapters only - shared, not per-player)
+      if (opts.isCampaign) {
+        const stopwatchBlock = view.querySelector(".team-stopwatch-block");
+        stopwatchBlock.hidden = false;
+        const stopwatchValue = game.teamStopwatches || 0;
+        stopwatchBlock.querySelector(".stopwatch-value").textContent = stopwatchValue;
+        stopwatchBlock
+          .querySelector(".stopwatch-dec")
+          .addEventListener("click", () => mutate("adjustTeamStopwatches", { delta: -1 }));
+        stopwatchBlock
+          .querySelector(".stopwatch-inc")
+          .addEventListener("click", () => mutate("adjustTeamStopwatches", { delta: 1 }));
+
+        const starting = game.startingTeamStopwatches || 0;
+        const used = Math.max(0, starting - stopwatchValue);
+        const bonusKept = starting >= 1 && stopwatchValue >= 1;
+        const parts = [`Started with ${starting}.`];
+        if (used > 0) parts.push(`Used ${used} so far.`);
+        if (bonusKept) parts.push("🎁 Bonus stopwatch kept if the chapter ends now.");
+        stopwatchBlock.querySelector(".stopwatch-summary").textContent = parts.join(" ");
+      }
+
       // Events
       const eventList = view.querySelector(".event-list");
       (game.events || []).forEach((event, i) => {
@@ -226,7 +250,7 @@
         });
 
         const breakdown = card.querySelector(".score-breakdown");
-        SCORE_CATEGORIES.forEach((category) => {
+        scoreCategories.forEach((category) => {
           const value = (player.scoreBreakdown && player.scoreBreakdown[category]) || 0;
           const row = document.getElementById("tpl-score-row").content.cloneNode(true);
           row.querySelector(".score-category-label").textContent = category;

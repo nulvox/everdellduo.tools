@@ -3,7 +3,7 @@ package model
 import "testing"
 
 func TestNewGroupNonCampaign(t *testing.T) {
-	g := NewGroup("g1", "Friday Duel", GameTypeDuel, []string{"Ash", "Bay"})
+	g := NewGroup("g1", "Friday Duel", GameTypeDuel, []string{"Ash", "Bay"}, DifficultyNormal)
 	if g.Game == nil {
 		t.Fatal("expected Game to be set for non-campaign group")
 	}
@@ -25,7 +25,7 @@ func TestNewGroupNonCampaign(t *testing.T) {
 }
 
 func TestNewGroupCampaign(t *testing.T) {
-	g := NewGroup("g2", "Campaign One", GameTypeCampaign, []string{"Ash"})
+	g := NewGroup("g2", "Campaign One", GameTypeCampaign, []string{"Ash"}, DifficultyHard)
 	if g.Campaign == nil {
 		t.Fatal("expected Campaign to be set for campaign group")
 	}

@@ -45,6 +45,12 @@ linting is clean.
 - [x] **4.9** `Game.Season` (winter/spring/summer/autumn) + `NextSeason`/`AdvanceSeason`/`RandomizeSkunks(WithRand)` in `internal/model`, with tests covering progression, nudge/wrap-on-collision randomization, never-on-zero placement, and the autumn "game over" signal.
 - [x] **4.10** WASM `advanceSeason` op; frontend season badge + "New season" button (disabled once the game is completed) that either runs the reset sequence or, in autumn, prompts for a final score check and completes the game.
 
+## Phase 4.6: Campaign-specific Rules (Difficulty, Team Stopwatches) — DONE
+
+- [x] **4.11** `Group.Difficulty` (`normal`/`hard`, normalized via `NormalizeDifficulty`), `Chapter.BonusStopwatch`, `Game.TeamStopwatches`/`StartingTeamStopwatches`; `ComputeStartingStopwatches`, `AdjustTeamStopwatches`, `StopwatchesUsed`, `StopwatchBonusKept`, `SetChapterBonusStopwatch` in `internal/model`, all tested. Removed the old per-player `stopwatch` resource/cap.
+- [x] **4.12** WASM: `newGroup` takes a difficulty, `addChapter` takes a bonus flag, `startChapterGame` takes a starting-stopwatch count and is always called with `coop`, new `setChapterBonusStopwatch` and `adjustTeamStopwatches` ops. Bumped backup format to v3 (breaking shape change).
+- [x] **4.13** Frontend: difficulty picker on the new-group form (shown only for Campaign), difficulty badge + bonus-stopwatch checkbox per chapter on the campaign view, no game-type dropdown when starting a chapter game (always co-op), a dedicated "Team Stopwatches" tracker block in the live game tracker (campaign games only) with a used/bonus-kept summary, `journey` excluded from campaign score-breakdown categories, and stopwatch usage/bonus surfaced in each chapter's game history row. Verified end-to-end in headless Firefox (hard difficulty + no bonus = 0 starting stopwatches, hard + bonus = 1, using the stopwatch clears the bonus, history rows show the right summary).
+
 ## Phase 5: Polish (Not Yet Started)
 
 - [x] **5.1** Add delete affordances: `RemoveChapter`/`RemoveChapterGame` in `internal/model` (tested), `everdellduoRemoveChapter`/`everdellduoRemoveChapterGame` WASM ops, and 🗑 Delete chapter / ✕ delete-game buttons in the campaign view, each with a confirmation prompt. (Group deletion already existed via the group list.) Chapter *renaming* is still open.

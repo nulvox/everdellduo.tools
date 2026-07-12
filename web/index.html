@@ -92,6 +92,18 @@
         </label>
       </fieldset>
 
+      <fieldset class="difficulty-picker" hidden>
+        <legend>Difficulty <small>(campaign only — controls chapter stopwatches)</small></legend>
+        <label class="game-type-option">
+          <input type="radio" name="difficulty" value="normal" checked>
+          <span>🌿 Normal <small>Team starts each chapter with 1 stopwatch, plus any chapter bonus</small></span>
+        </label>
+        <label class="game-type-option">
+          <input type="radio" name="difficulty" value="hard">
+          <span>🔥 Hard <small>Team only gets a chapter's bonus stopwatch, if any</small></span>
+        </label>
+      </fieldset>
+
       <label>
         Players (comma separated)
         <input type="text" name="players" required placeholder="e.g. Ash, Bay">
@@ -153,6 +165,18 @@
           <button type="submit" class="btn btn-small">Add</button>
         </form>
       </section>
+
+      <section class="tracker-block team-stopwatch-block" hidden>
+        <h3>⏱️ Team Stopwatches</h3>
+        <p class="hint">Shared by the whole team, not per player. Starting count is set when the chapter's game begins.</p>
+        <div class="marker-row stopwatch-row">
+          <span>On hand</span>
+          <button class="btn btn-tiny stopwatch-dec">-</button>
+          <span class="stopwatch-value">0</span>
+          <button class="btn btn-tiny stopwatch-inc">+</button>
+        </div>
+        <p class="stopwatch-summary"></p>
+      </section>
     </div>
 
     <section class="players-block">
@@ -199,6 +223,7 @@
   <section class="panel campaign-view">
     <div class="panel-header">
       <h2 class="group-title"></h2>
+      <span class="difficulty-badge"></span>
       <button class="btn btn-secondary btn-back">← All groups</button>
     </div>
 
@@ -215,6 +240,10 @@
         <h3>📖 Chapters</h3>
         <form class="form-add-chapter">
           <input type="text" name="chapterName" placeholder="New chapter name" required>
+          <label class="chapter-bonus-label">
+            <input type="checkbox" name="bonusStopwatch">
+            🎁 Bonus stopwatch
+          </label>
           <button type="submit" class="btn btn-small">Add chapter</button>
         </form>
       </div>
@@ -228,12 +257,11 @@
     <div class="chapter-card-header">
       <span class="chapter-name"></span>
       <div>
-        <select class="chapter-game-type">
-          <option value="challenge">Challenge</option>
-          <option value="duel">Duel</option>
-          <option value="coop">Co-op</option>
-        </select>
-        <button class="btn btn-small btn-start-game">▶ Start game</button>
+        <label class="chapter-bonus-label">
+          <input type="checkbox" class="chapter-bonus-stopwatch">
+          🎁 Bonus stopwatch this chapter
+        </label>
+        <button class="btn btn-small btn-start-game">▶ Start game (co-op)</button>
         <button class="btn btn-small btn-danger btn-delete-chapter" title="Delete this chapter and all its games">🗑 Delete chapter</button>
       </div>
     </div>

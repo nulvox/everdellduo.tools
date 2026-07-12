@@ -12,16 +12,71 @@ func TestAdjustResourceClampsAtZero(t *testing.T) {
 	}
 }
 
-func TestAdjustResourceStopwatchCap(t *testing.T) {
-	game := NewGame("gid", GameTypeCampaign, []string{"Ash"})
-	if err := AdjustResource(&game, "Ash", "stopwatch", 2); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestComputeStartingStopwatches(t *testing.T) {
+	cases := []struct {
+		difficulty Difficulty
+		bonus      bool
+		want       int
+	}{
+		{DifficultyNormal, false, 1},
+		{DifficultyNormal, true, 2},
+		{DifficultyHard, false, 0},
+		{DifficultyHard, true, 1},
+		{"", false, 1}, // unrecognized normalizes to normal
 	}
-	if err := AdjustResource(&game, "Ash", "stopwatch", 1); err != ErrStopwatchCap {
-		t.Fatalf("expected ErrStopwatchCap, got %v", err)
+	for _, c := range cases {
+		got := ComputeStartingStopwatches(c.difficulty, c.bonus)
+		if got != c.want {
+			t.Fatalf("ComputeStartingStopwatches(%q, %v) = %d, want %d", c.difficulty, c.bonus, got, c.want)
+		}
 	}
-	if game.Players[0].Resources["stopwatch"] != 2 {
-		t.Fatalf("expected stopwatch to stay at 2, got %d", game.Players[0].Resources["stopwatch"])
+}
+
+func TestAdjustTeamStopwatchesFloorsAtZero(t *testing.T) {
+	game := NewGame("gid", GameTypeCoop, []string{"Ash", "Bay"})
+	game.TeamStopwatches = 1
+	AdjustTeamStopwatches(&game, -5)
+	if game.TeamStopwatches != 0 {
+		t.Fatalf("expected team stopwatches floored at 0, got %d", game.TeamStopwatches)
+	}
+	AdjustTeamStopwatches(&game, 2)
+	if game.TeamStopwatches != 2 {
+		t.Fatalf("expected team stopwatches at 2, got %d", game.TeamStopwatches)
+	}
+}
+
+func TestStopwatchBonusKeptAndUsed(t *testing.T) {
+	game := NewGame("gid", GameTypeCoop, []string{"Ash", "Bay"})
+	game.StartingTeamStopwatches = 2
+	game.TeamStopwatches = 2
+
+	if !StopwatchBonusKept(&game) {
+		t.Fatal("expected bonus kept when starting and ending counts are both >= 1")
+	}
+	if StopwatchesUsed(&game) != 0 {
+		t.Fatalf("expected 0 used, got %d", StopwatchesUsed(&game))
+	}
+
+	AdjustTeamStopwatches(&game, -1)
+	if !StopwatchBonusKept(&game) {
+		t.Fatal("expected bonus still kept with 1 remaining")
+	}
+	if StopwatchesUsed(&game) != 1 {
+		t.Fatalf("expected 1 used, got %d", StopwatchesUsed(&game))
+	}
+
+	AdjustTeamStopwatches(&game, -1)
+	if StopwatchBonusKept(&game) {
+		t.Fatal("expected bonus not kept once the team is out of stopwatches")
+	}
+	if StopwatchesUsed(&game) != 2 {
+		t.Fatalf("expected 2 used, got %d", StopwatchesUsed(&game))
+	}
+
+	noStart := NewGame("gid2", GameTypeCoop, []string{"Ash"})
+	noStart.TeamStopwatches = 1 // e.g. manually added mid-game
+	if StopwatchBonusKept(&noStart) {
+		t.Fatal("expected no bonus when the team started with 0 stopwatches")
 	}
 }
 
@@ -136,8 +191,8 @@ func TestMarkerAndComplete(t *testing.T) {
 
 func TestRemoveChapter(t *testing.T) {
 	campaign := Campaign{}
-	AddChapter(&campaign, "Chapter 1")
-	AddChapter(&campaign, "Chapter 2")
+	AddChapter(&campaign, "Chapter 1", false)
+	AddChapter(&campaign, "Chapter 2", false)
 	if err := RemoveChapter(&campaign, 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -151,9 +206,9 @@ func TestRemoveChapter(t *testing.T) {
 
 func TestRemoveChapterGame(t *testing.T) {
 	campaign := Campaign{}
-	AddChapter(&campaign, "Chapter 1")
-	_, _ = StartChapterGame(&campaign, 0, "g1", GameTypeChallenge, []string{"Ash"})
-	_, _ = StartChapterGame(&campaign, 0, "g2", GameTypeChallenge, []string{"Ash"})
+	AddChapter(&campaign, "Chapter 1", false)
+	_, _ = StartChapterGame(&campaign, 0, "g1", GameTypeChallenge, []string{"Ash"}, 0)
+	_, _ = StartChapterGame(&campaign, 0, "g2", GameTypeChallenge, []string{"Ash"}, 0)
 	if err := RemoveChapterGame(&campaign, 0, 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -270,10 +325,37 @@ func TestAdvanceSeasonSignalsGameOverAtAutumn(t *testing.T) {
 	}
 }
 
+func TestChapterBonusStopwatchFlow(t *testing.T) {
+	campaign := Campaign{}
+	AddChapter(&campaign, "Chapter 1", true)
+	if !campaign.Chapters[0].BonusStopwatch {
+		t.Fatal("expected chapter to be created with bonus stopwatch flag set")
+	}
+
+	starting := ComputeStartingStopwatches(DifficultyNormal, campaign.Chapters[0].BonusStopwatch)
+	g, err := StartChapterGame(&campaign, 0, "g1", GameTypeCoop, []string{"Ash"}, starting)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if g.TeamStopwatches != 2 || g.StartingTeamStopwatches != 2 {
+		t.Fatalf("expected 2 starting team stopwatches (1 baseline + 1 bonus), got %+v", g)
+	}
+
+	if err := SetChapterBonusStopwatch(&campaign, 0, false); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if campaign.Chapters[0].BonusStopwatch {
+		t.Fatal("expected bonus stopwatch flag cleared")
+	}
+	if err := SetChapterBonusStopwatch(&campaign, 9, true); err != ErrChapterNotFound {
+		t.Fatalf("expected ErrChapterNotFound, got %v", err)
+	}
+}
+
 func TestChapterGameFlow(t *testing.T) {
 	campaign := Campaign{}
-	AddChapter(&campaign, "Chapter 1: Roots")
-	g, err := StartChapterGame(&campaign, 0, "game-1", GameTypeChallenge, []string{"Ash"})
+	AddChapter(&campaign, "Chapter 1: Roots", false)
+	g, err := StartChapterGame(&campaign, 0, "game-1", GameTypeChallenge, []string{"Ash"}, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

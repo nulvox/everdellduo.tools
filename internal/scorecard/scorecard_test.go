@@ -8,16 +8,16 @@ import (
 
 func TestComputeSumsOnlyCompletedGames(t *testing.T) {
 	campaign := model.Campaign{}
-	model.AddChapter(&campaign, "Chapter 1")
-	g1, _ := model.StartChapterGame(&campaign, 0, "g1", model.GameTypeChallenge, []string{"Ash"})
+	model.AddChapter(&campaign, "Chapter 1", false)
+	g1, _ := model.StartChapterGame(&campaign, 0, "g1", model.GameTypeChallenge, []string{"Ash"}, 0)
 	_ = model.SetScoreBreakdownEntry(g1, "Ash", "cards", 15)
 	model.CompleteGame(g1)
 
 	// A second, in-progress attempt should not count yet.
-	_, _ = model.StartChapterGame(&campaign, 0, "g2", model.GameTypeChallenge, []string{"Ash"})
+	_, _ = model.StartChapterGame(&campaign, 0, "g2", model.GameTypeChallenge, []string{"Ash"}, 0)
 
-	model.AddChapter(&campaign, "Chapter 2")
-	g3, _ := model.StartChapterGame(&campaign, 1, "g3", model.GameTypeChallenge, []string{"Ash"})
+	model.AddChapter(&campaign, "Chapter 2", false)
+	g3, _ := model.StartChapterGame(&campaign, 1, "g3", model.GameTypeChallenge, []string{"Ash"}, 0)
 	_ = model.SetScoreBreakdownEntry(g3, "Ash", "cards", 9)
 	model.CompleteGame(g3)
 

@@ -79,7 +79,7 @@ func NewTrackers() Trackers {
 
 // DefaultResourceOrder is the display order for the standard Everdell
 // resources. Players/games are free to add other named resources too.
-var DefaultResourceOrder = []string{"worker", "berry", "twig", "resin", "pebble", "stopwatch"}
+var DefaultResourceOrder = []string{"worker", "berry", "twig", "resin", "pebble"}
 
 // StartingWorkers is how many workers a player has available at the start
 // of a game, and how many they're reset to at the start of each season.
@@ -87,8 +87,7 @@ const StartingWorkers = 3
 
 // NewDefaultResources returns the standard starting resource map. "worker"
 // starts at StartingWorkers since a fresh game begins in winter; everything
-// else starts at zero. "stopwatch" is a scored resource capped at 0-2 per
-// chapter, not a live countdown timer.
+// else starts at zero.
 func NewDefaultResources() map[string]int {
 	r := make(map[string]int, len(DefaultResourceOrder))
 	for _, name := range DefaultResourceOrder {
@@ -98,8 +97,42 @@ func NewDefaultResources() map[string]int {
 	return r
 }
 
-// StopwatchCap is the maximum number of stopwatches a player may hold.
-const StopwatchCap = 2
+// Difficulty selects a campaign's stopwatch rules. On Normal, a chapter's
+// team starts with a baseline stopwatch plus any chapter-specific bonus; on
+// Hard, they only get the chapter-specific bonus (no baseline).
+type Difficulty string
+
+const (
+	DifficultyNormal Difficulty = "normal"
+	DifficultyHard   Difficulty = "hard"
+)
+
+// NormalizeDifficulty maps any unrecognized value to DifficultyNormal so
+// stored/serialized data always ends up as one of the two known values.
+func NormalizeDifficulty(d Difficulty) Difficulty {
+	if d == DifficultyHard {
+		return DifficultyHard
+	}
+	return DifficultyNormal
+}
+
+// BaselineStopwatches is how many team stopwatches Normal difficulty grants
+// before any chapter-specific bonus is added. Hard difficulty gets none.
+const BaselineStopwatches = 1
+
+// ComputeStartingStopwatches returns how many shared team stopwatches a
+// chapter's game should start with, given the campaign's difficulty and
+// whether that specific chapter grants a bonus stopwatch.
+func ComputeStartingStopwatches(difficulty Difficulty, chapterBonus bool) int {
+	starting := 0
+	if NormalizeDifficulty(difficulty) == DifficultyNormal {
+		starting = BaselineStopwatches
+	}
+	if chapterBonus {
+		starting++
+	}
+	return starting
+}
 
 // Season identifies the current season within a game. Games always begin
 // in winter and progress winter -> spring -> summer -> autumn; there is no
@@ -142,17 +175,26 @@ const (
 )
 
 // Game is the live/current game state: players, events, board trackers.
+//
+// TeamStopwatches/StartingTeamStopwatches are only meaningful for campaign
+// chapter games: stopwatches there are a shared team resource, not a
+// per-player one. StartingTeamStopwatches is a snapshot taken when the
+// game starts (see ComputeStartingStopwatches); comparing it against the
+// live TeamStopwatches count is how StopwatchesUsed/StopwatchBonusKept
+// derive their results.
 type Game struct {
-	ID          string        `json:"id"`
-	GameType    GameType      `json:"gameType"`
-	Players     []PlayerState `json:"players"`
-	Events      []Event       `json:"events"`
-	Trackers    Trackers      `json:"trackers"`
-	Season      Season        `json:"season"`
-	Status      GameStatus    `json:"status"`
-	StartedAt   time.Time     `json:"startedAt"`
-	CompletedAt *time.Time    `json:"completedAt,omitempty"`
-	Notes       string        `json:"notes,omitempty"`
+	ID                      string        `json:"id"`
+	GameType                GameType      `json:"gameType"`
+	Players                 []PlayerState `json:"players"`
+	Events                  []Event       `json:"events"`
+	Trackers                Trackers      `json:"trackers"`
+	Season                  Season        `json:"season"`
+	TeamStopwatches         int           `json:"teamStopwatches"`
+	StartingTeamStopwatches int           `json:"startingTeamStopwatches"`
+	Status                  GameStatus    `json:"status"`
+	StartedAt               time.Time     `json:"startedAt"`
+	CompletedAt             *time.Time    `json:"completedAt,omitempty"`
+	Notes                   string        `json:"notes,omitempty"`
 }
 
 // NewGame creates a fresh Game for the given type and player names.
@@ -175,9 +217,15 @@ func NewGame(id string, gameType GameType, playerNames []string) Game {
 
 // Chapter is one chapter of a Campaign. A chapter may be played (and
 // re-played) multiple times; each completed attempt is appended to Games.
+// BonusStopwatch marks chapters that grant an extra team stopwatch on top
+// of whatever the campaign's Difficulty provides (see
+// ComputeStartingStopwatches) - which chapters do varies by campaign/box,
+// so it's a per-chapter setting the player configures rather than a
+// hardcoded rule.
 type Chapter struct {
-	Name  string `json:"name"`
-	Games []Game `json:"games"`
+	Name           string `json:"name"`
+	BonusStopwatch bool   `json:"bonusStopwatch"`
+	Games          []Game `json:"games"`
 }
 
 // Campaign tracks progress across multiple chapters, each of which is
@@ -190,28 +238,32 @@ type Campaign struct {
 // Group is the top-level durable artifact: a single tracked group, created
 // as one specific game type. For all types except campaign there is
 // exactly one Game. For campaign type, Campaign is populated instead.
+// Difficulty only affects campaign groups (it controls chapter starting
+// stopwatches) but is stored on every group for simplicity.
 type Group struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	GameType  GameType  `json:"gameType"`
-	Players   []string  `json:"players"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	Game      *Game     `json:"game,omitempty"`
-	Campaign  *Campaign `json:"campaign,omitempty"`
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	GameType   GameType   `json:"gameType"`
+	Difficulty Difficulty `json:"difficulty"`
+	Players    []string   `json:"players"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+	Game       *Game      `json:"game,omitempty"`
+	Campaign   *Campaign  `json:"campaign,omitempty"`
 }
 
 // NewGroup creates a new Group of the given type. For campaign groups, an
 // empty Campaign is attached; otherwise a fresh single Game is attached.
-func NewGroup(id, name string, gameType GameType, playerNames []string) Group {
+func NewGroup(id, name string, gameType GameType, playerNames []string, difficulty Difficulty) Group {
 	now := time.Now().UTC()
 	g := Group{
-		ID:        id,
-		Name:      name,
-		GameType:  gameType,
-		Players:   playerNames,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:         id,
+		Name:       name,
+		GameType:   gameType,
+		Difficulty: NormalizeDifficulty(difficulty),
+		Players:    playerNames,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 	if gameType == GameTypeCampaign {
 		g.Campaign = &Campaign{Chapters: []Chapter{}}

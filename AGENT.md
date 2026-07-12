@@ -82,8 +82,10 @@ User clicks a stepper / toggles a checkbox / submits a form
 
 - Game types offered when creating a group: `challenge`, `duel`, `coop`, `campaign`.
 - Only `campaign` groups have multiple games; all other types are exactly one game per group.
-- Campaigns are chapters; each chapter can be (re)played as one or more game attempts; only **completed** attempts count toward the running scorecard.
-- "Stopwatches" are a scored resource capped 0-2, recorded as part of the score breakdown at the end of a game/chapter — not a live countdown timer.
+- Campaigns are chapters; each chapter can be (re)played as one or more game attempts; only **completed** attempts count toward the running scorecard. Chapters and individual game attempts can be deleted (`RemoveChapter`/`RemoveChapterGame`), removing them from the scorecard too; groups are deleted from the group list.
+- Campaign chapters are **always co-op** — there's no game-type picker when starting a chapter game.
+- A campaign `Group` has a `Difficulty` (`normal`/`hard`), and each `Chapter` has a `BonusStopwatch` flag the player sets (which chapters grant a bonus varies by campaign/box, so it isn't hardcoded). Stopwatches in a campaign chapter are a **shared team pool**, not per-player: `ComputeStartingStopwatches` gives Normal a 1-stopwatch baseline plus any chapter bonus, Hard only the chapter bonus. `AdjustTeamStopwatches` changes the live count; `StopwatchesUsed`/`StopwatchBonusKept` derive usage/bonus-kept for display (started with ≥ 1 and still ≥ 1) — the app records/shows this but does not invent a point value, since the exact bonus value isn't something we can verify.
+- `journey` is not a valid score-breakdown category for campaign chapter games (co-op doesn't use it); it's still offered for standalone Duel/Challenge/Co-op groups.
 - Skunk markers are specific to Challenge mode and roam three zones — `events`, `meadow`, and `farm` — with a position that only has to be unique within its own zone, hence they're modeled as a slice of `{zone, position}`, not a fixed field or bare int.
 - A skunk parked in the `meadow` zone blocks that space for the sun/moon markers: `AdjustMarker` skips over occupied meadow positions one logical step at a time, and the sun/moon track is hard-capped at position 6 (`MaxMarkerPosition`).
 - Exact board-marker step counts vary by print run; the app lets players freely increment/decrement rather than hardcoding rulebook specifics it can't verify.

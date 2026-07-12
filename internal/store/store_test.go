@@ -8,8 +8,8 @@ import (
 
 func TestBackupRoundTrip(t *testing.T) {
 	groups := []model.Group{
-		model.NewGroup("g1", "Zeta Duel", model.GameTypeDuel, []string{"Ash", "Bay"}),
-		model.NewGroup("g2", "Alpha Campaign", model.GameTypeCampaign, []string{"Ash"}),
+		model.NewGroup("g1", "Zeta Duel", model.GameTypeDuel, []string{"Ash", "Bay"}, model.DifficultyNormal),
+		model.NewGroup("g2", "Alpha Campaign", model.GameTypeCampaign, []string{"Ash"}, model.DifficultyHard),
 	}
 	backup := NewBackup(groups)
 	if backup.Groups[0].Name != "Alpha Campaign" {
