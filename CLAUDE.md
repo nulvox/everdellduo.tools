@@ -21,7 +21,7 @@ Go WASM serves as the logic backend. It exposes functions to JavaScript via `sys
 - `everdellduoNewGroup(name, gameType, playersJSON)` — create a new Group
 - `everdellduoAddChapter(campaignJSON, name)` — append a chapter to a campaign
 - `everdellduoStartChapterGame(campaignJSON, chapterIndex, gameType, playersJSON)` — start a new game attempt within a chapter
-- `everdellduoMutateGame(gameJSON, op, payloadJSON)` — apply one of a fixed set of mutations to a live Game (adjustResource, setScoreBreakdown, addEvent, removeEvent, setEventAchieved, setMarker, addSkunk, setSkunkPosition, removeSkunk, completeGame)
+- `everdellduoMutateGame(gameJSON, op, payloadJSON)` — apply one of a fixed set of mutations to a live Game (adjustResource, setScoreBreakdown, addEvent, removeEvent, setEventAchieved, adjustMarker, addSkunk, setSkunkPosition, setSkunkZone, removeSkunk, completeGame)
 - `everdellduoComputeScorecard(campaignJSON)` — compute the running per-player scorecard from a campaign's completed games
 - `everdellduoExportBackup(groupsJSON)` / `everdellduoImportBackup(backupJSON)` — durable backup serialization
 
@@ -105,7 +105,7 @@ everdellduo.tools/
 - **Resources**: a `map[string]int` per player, not a fixed struct, so different formats can use different resource sets. Defaults: `berry`, `twig`, `resin`, `pebble`, `stopwatch`.
   - `stopwatch` is a **scored resource capped at 0-2**, not a live countdown timer. It is recorded into the score breakdown like any other category.
 - **Events**: `{name, achieved, achievedBy}` — free-form list, add/remove/toggle at will.
-- **Trackers**: `{markers: map[string]int, skunks: []int}`. `markers` defaults to `sun` and `moon` at position 0; `skunks` is a variable-length list of positions since Challenge mode can have more than one skunk marker roaming the event row. Positions are plain integers the players adjust to match their physical board — this app does not hardcode exact rulebook step counts, since box editions/printings vary.
+- **Trackers**: `{markers: map[string]int, skunks: []Skunk}`. `markers` defaults to `sun` and `moon` at position 0 and is clamped to `[0,6]` (`internal/model.MinMarkerPosition`/`MaxMarkerPosition`). Each `Skunk` is `{zone, position}` where `zone` is one of `events`/`meadow`/`farm`; a skunk's position only has to be unique among other skunks in the *same* zone. Meadow skunks are special: `AdjustMarker` moves the sun/moon one logical step at a time and skips over any position occupied by a meadow skunk, so the marker "hops" them. `AddSkunk`/`SetSkunkZone` auto-place at the next free position in the target zone; `SetSkunkPosition` rejects a move onto an already-occupied position in the same zone (`ErrSkunkPositionTaken`).
 - **Campaign**: an ordered list of `Chapter`s, each with a name and a list of `Game` attempts. The running scorecard is *computed*, not stored, by summing each **completed** game's player scores across all chapters (`internal/scorecard`). In-progress attempts are ignored until completed.
 
 ## Key UX Requirements

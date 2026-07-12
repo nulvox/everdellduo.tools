@@ -70,7 +70,7 @@ User clicks a stepper / toggles a checkbox / submits a form
 2. **JSON as the bridge format**: every WASM call takes/returns JSON strings wrapped in an `{ok, data|error}` envelope.
 3. **localStorage, not cookies**: one key per group (`everdellduo_group_{id}`), plus a manifest key (`everdellduo_manifest`) for listing without loading every group.
 4. **Backups are the durable recovery path**: `localStorage` can be cleared by the browser at any time. The header "Export backup" button and per-group export buttons are not optional nice-to-haves — treat backup/restore round-tripping as core functionality with test coverage in `internal/store`.
-5. **Flexible data model for future formats**: resources are a `map[string]int`, not fixed struct fields; `GameType` is a string, not a closed enum; trackers use a markers map plus a skunks slice. When adding a new Everdell format, prefer extending these generic containers over adding new fixed fields.
+5. **Flexible data model for future formats**: resources are a `map[string]int`, not fixed struct fields; `GameType` is a string, not a closed enum; trackers use a markers map plus a slice of zoned skunks. When adding a new Everdell format, prefer extending these generic containers over adding new fixed fields.
 6. **GitHub Pages via `docs/`**: `make build` outputs everything needed to `docs/`, which is what GitHub Pages serves from `main`.
 
 ## Everdell Duo Reference Notes
@@ -79,7 +79,8 @@ User clicks a stepper / toggles a checkbox / submits a form
 - Only `campaign` groups have multiple games; all other types are exactly one game per group.
 - Campaigns are chapters; each chapter can be (re)played as one or more game attempts; only **completed** attempts count toward the running scorecard.
 - "Stopwatches" are a scored resource capped 0-2, recorded as part of the score breakdown at the end of a game/chapter — not a live countdown timer.
-- Skunk markers are specific to Challenge mode's event row and can vary in count, hence they're modeled as a slice, not a fixed field.
+- Skunk markers are specific to Challenge mode and roam three zones — `events`, `meadow`, and `farm` — with a position that only has to be unique within its own zone, hence they're modeled as a slice of `{zone, position}`, not a fixed field or bare int.
+- A skunk parked in the `meadow` zone blocks that space for the sun/moon markers: `AdjustMarker` skips over occupied meadow positions one logical step at a time, and the sun/moon track is hard-capped at position 6 (`MaxMarkerPosition`).
 - Exact board-marker step counts vary by print run; the app lets players freely increment/decrement rather than hardcoding rulebook specifics it can't verify.
 
 ## What "Done" Looks Like
