@@ -39,6 +39,12 @@ linting is clean.
 - [x] **4.6** `web/js/import-export.js` + `web/js/theme.js` — header export/import backup buttons, day/night theme toggle.
 - [x] **4.7** `web/css/style.css` — woodland/critter theme, day + night palettes via `[data-theme]`.
 
+## Phase 4.5: Seasons & Workers — DONE
+
+- [x] **4.8** `worker` resource (default 3, reset each season) added to the model, ordered first in `DefaultResourceOrder`; pebble/resin emoji updated to 🪨/🔶.
+- [x] **4.9** `Game.Season` (winter/spring/summer/autumn) + `NextSeason`/`AdvanceSeason`/`RandomizeSkunks(WithRand)` in `internal/model`, with tests covering progression, nudge/wrap-on-collision randomization, never-on-zero placement, and the autumn "game over" signal.
+- [x] **4.10** WASM `advanceSeason` op; frontend season badge + "New season" button (disabled once the game is completed) that either runs the reset sequence or, in autumn, prompts for a final score check and completes the game.
+
 ## Phase 5: Polish (Not Yet Started)
 
 - [ ] **5.1** Add a "rename/delete chapter" affordance to the campaign view (currently chapters can only be added, not renamed/removed).
