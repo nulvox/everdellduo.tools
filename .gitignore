@@ -1,0 +1,22 @@
+# Build output (except docs/ which is for GitHub Pages)
+# docs/ is committed for GitHub Pages deployment
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Everdell Duo Tracker</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+<div id="app-loading" class="loading-screen">
+  <div class="loading-critter">🦔</div>
+  <p>Waking the woodland critters&hellip;</p>
+</div>
+
+<header class="site-header">
+  <h1>🌲 Everdell Duo Tracker 🍄</h1>
+  <p class="tagline">Groups, campaigns, and live scorekeeping for Everdell Duo (and friends).</p>
+  <div class="header-actions">
+    <button id="btn-export-all" class="btn btn-secondary" title="Download a backup of every group">⬇️ Export backup</button>
+    <label class="btn btn-secondary" title="Restore groups from a backup file">
+      ⬆️ Import backup
+      <input type="file" id="input-import-all" accept="application/json" hidden>
+    </label>
+    <button id="btn-theme-toggle" class="btn btn-secondary" title="Toggle theme">🌗</button>
+  </div>
+</header>
+
+<main id="view-root">
+  <!-- Views are rendered here by JS: group list, new-group form, game tracker, campaign view -->
+</main>
+
+<footer class="site-footer">
+  <p>Unofficial fan tool. Not affiliated with Starling Games. Your data lives in your browser &mdash; export a backup to keep it safe.</p>
+</footer>
+
+<template id="tpl-group-list">
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Your Groups</h2>
+      <button id="btn-new-group" class="btn btn-primary">🌱 Start a new group</button>
+    </div>
+    <ul id="group-list" class="group-list"></ul>
+    <p id="group-list-empty" class="empty-state" hidden>No groups yet &mdash; plant your first one!</p>
+  </section>
+</template>
+
+<template id="tpl-group-card">
+  <li class="group-card">
+    <div class="group-card-main">
+      <span class="game-type-badge"></span>
+      <span class="group-name"></span>
+      <span class="group-updated"></span>
+    </div>
+    <div class="group-card-actions">
+      <button class="btn btn-small btn-open">Open</button>
+      <button class="btn btn-small btn-export">Export</button>
+      <button class="btn btn-small btn-danger btn-delete">Delete</button>
+    </div>
+  </li>
+</template>
+
+<template id="tpl-new-group">
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Start a New Group</h2>
+      <button id="btn-cancel-new-group" class="btn btn-secondary">← Back</button>
+    </div>
+    <form id="form-new-group" class="form-new-group">
+      <label>
+        Group name
+        <input type="text" name="name" required placeholder="e.g. Tuesday Night Duel">
+      </label>
+
+      <fieldset class="game-type-picker">
+        <legend>Game type</legend>
+        <label class="game-type-option">
+          <input type="radio" name="gameType" value="challenge" required>
+          <span>🏆 Challenge <small>Solo vs. the event deck</small></span>
+        </label>
+        <label class="game-type-option">
+          <input type="radio" name="gameType" value="duel">
+          <span>⚔️ Duel <small>Head-to-head, 2 players</small></span>
+        </label>
+        <label class="game-type-option">
+          <input type="radio" name="gameType" value="coop">
+          <span>🤝 Co-op <small>Work together</small></span>
+        </label>
+        <label class="game-type-option">
+          <input type="radio" name="gameType" value="campaign">
+          <span>📖 Campaign <small>Multiple chapters &amp; games</small></span>
+        </label>
+      </fieldset>
+
+      <label>
+        Players (comma separated)
+        <input type="text" name="players" required placeholder="e.g. Ash, Bay">
+      </label>
+
+      <button type="submit" class="btn btn-primary">Create group</button>
+    </form>
+  </section>
+</template>
+
+<template id="tpl-game-tracker">
+  <section class="panel game-tracker">
+    <div class="panel-header">
+      <h2 class="group-title"></h2>
+      <div>
+        <button class="btn btn-secondary btn-back">← All groups</button>
+        <button class="btn btn-primary btn-complete-game" title="Mark this game complete and lock in the score">✅ Complete game</button>
+      </div>
+    </div>
+
+    <div class="tracker-grid">
+      <section class="tracker-block">
+        <h3>☀️ Sun &amp; 🌙 Moon</h3>
+        <div class="marker-row" data-marker="sun">
+          <span>Sun</span>
+          <button class="btn btn-tiny marker-dec">-</button>
+          <span class="marker-value">0</span>
+          <button class="btn btn-tiny marker-inc">+</button>
+        </div>
+        <div class="marker-row" data-marker="moon">
+          <span>Moon</span>
+          <button class="btn btn-tiny marker-dec">-</button>
+          <span class="marker-value">0</span>
+          <button class="btn btn-tiny marker-inc">+</button>
+        </div>
+      </section>
+
+      <section class="tracker-block">
+        <h3>🦨 Skunks</h3>
+        <ul class="skunk-list"></ul>
+        <button class="btn btn-small btn-add-skunk">+ Add skunk</button>
+      </section>
+
+      <section class="tracker-block events-block">
+        <h3>📜 Events</h3>
+        <ul class="event-list"></ul>
+        <form class="form-add-event">
+          <input type="text" name="eventName" placeholder="New event name" required>
+          <button type="submit" class="btn btn-small">Add</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="players-block">
+      <h3>👥 Players</h3>
+      <div class="player-cards"></div>
+    </section>
+
+    <section class="notes-block">
+      <h3>📝 Notes</h3>
+      <textarea class="game-notes" placeholder="Table talk, house rules, memorable turns&hellip;"></textarea>
+    </section>
+  </section>
+</template>
+
+<template id="tpl-player-card">
+  <div class="player-card">
+    <h4 class="player-name"></h4>
+    <div class="resource-rows"></div>
+    <div class="score-breakdown"></div>
+    <div class="score-total">
+      Total score: <strong class="score-value">0</strong>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-resource-row">
+  <div class="resource-row" data-resource="">
+    <span class="resource-icon"></span>
+    <span class="resource-label"></span>
+    <button class="btn btn-tiny res-dec">-</button>
+    <span class="resource-value">0</span>
+    <button class="btn btn-tiny res-inc">+</button>
+  </div>
+</template>
+
+<template id="tpl-score-row">
+  <div class="score-row">
+    <span class="score-category-label"></span>
+    <input type="number" class="score-category-input" value="0">
+  </div>
+</template>
+
+<template id="tpl-campaign-view">
+  <section class="panel campaign-view">
+    <div class="panel-header">
+      <h2 class="group-title"></h2>
+      <button class="btn btn-secondary btn-back">← All groups</button>
+    </div>
+
+    <section class="scorecard-block">
+      <h3>🏅 Running Scorecard</h3>
+      <table class="scorecard-table">
+        <thead><tr><th>Player</th><th>Total</th></tr></thead>
+        <tbody class="scorecard-body"></tbody>
+      </table>
+    </section>
+
+    <section class="chapters-block">
+      <div class="panel-header">
+        <h3>📖 Chapters</h3>
+        <form class="form-add-chapter">
+          <input type="text" name="chapterName" placeholder="New chapter name" required>
+          <button type="submit" class="btn btn-small">Add chapter</button>
+        </form>
+      </div>
+      <ul class="chapter-list"></ul>
+    </section>
+  </section>
+</template>
+
+<template id="tpl-chapter-card">
+  <li class="chapter-card">
+    <div class="chapter-card-header">
+      <span class="chapter-name"></span>
+      <div>
+        <select class="chapter-game-type">
+          <option value="challenge">Challenge</option>
+          <option value="duel">Duel</option>
+          <option value="coop">Co-op</option>
+        </select>
+        <button class="btn btn-small btn-start-game">▶ Start game</button>
+      </div>
+    </div>
+    <ul class="chapter-game-list"></ul>
+  </li>
+</template>
+
+<template id="tpl-chapter-game-row">
+  <li class="chapter-game-row">
+    <span class="game-status"></span>
+    <span class="game-summary"></span>
+    <div>
+      <button class="btn btn-tiny btn-resume">Open</button>
+    </div>
+  </li>
+</template>
+
+<script src="wasm_exec.js"></script>
+<script src="js/wasm-loader.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/import-export.js"></script>
+<script src="js/group-list.js"></script>
+<script src="js/game-tracker.js"></script>
+<script src="js/campaign-view.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

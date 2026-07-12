@@ -1,0 +1,6 @@
+@media print {
+  .site-header, .site-footer, .header-actions, .btn, form { display: none !important; }
+  main { max-width: 100%; margin: 0; padding: 0; }
+  .panel { box-shadow: none; border: none; }
+  body { background: #fff; color: #000; }
+}
