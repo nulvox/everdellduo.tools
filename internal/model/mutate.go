@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"math/rand"
 	"time"
 )
 
@@ -266,4 +267,86 @@ func StartChapterGame(c *Campaign, chapterIndex int, id string, gameType GameTyp
 // before persisting.
 func Touch(g *Group) {
 	g.UpdatedAt = time.Now().UTC()
+}
+
+// NextSeason returns the season that follows current in the fixed winter
+// -> spring -> summer -> autumn progression. If current is unrecognized it
+// is treated as winter (the season before spring). If current is already
+// autumn, there is no next season (ok is false) - ending autumn ends the
+// game rather than looping back to winter.
+func NextSeason(current Season) (next Season, ok bool) {
+	idx := -1
+	for i, s := range SeasonOrder {
+		if s == current {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(SeasonOrder)-1 {
+		return "", false
+	}
+	return SeasonOrder[idx+1], true
+}
+
+// RandomizeSkunks reassigns every skunk to a random position within its own
+// zone, using math/rand. Positions are 1-6 (skunks can never sit on 0);
+// collisions within the same zone are resolved by nudging to the next
+// position, wrapping from 6 back to 1.
+func RandomizeSkunks(g *Game) {
+	RandomizeSkunksWithRand(g, rand.Intn)
+}
+
+// RandomizeSkunksWithRand is RandomizeSkunks with an injectable randomness
+// source (randIntn(n) must return a value in [0,n)), so the nudge/wrap
+// behavior can be tested deterministically.
+func RandomizeSkunksWithRand(g *Game, randIntn func(n int) int) {
+	byZone := map[SkunkZone][]int{}
+	for i, s := range g.Trackers.Skunks {
+		byZone[s.Zone] = append(byZone[s.Zone], i)
+	}
+	for _, indices := range byZone {
+		used := map[int]bool{}
+		for _, idx := range indices {
+			pos := 1 + randIntn(MaxMarkerPosition)
+			for used[pos] {
+				pos++
+				if pos > MaxMarkerPosition {
+					pos = 1
+				}
+			}
+			used[pos] = true
+			g.Trackers.Skunks[idx].Position = pos
+		}
+	}
+}
+
+// AdvanceSeason performs the "new season" sequence: sun/moon markers reset
+// to 0, skunks are re-randomized, every player's workers reset to
+// StartingWorkers, and the season counter progresses. It returns true if
+// the game was already in autumn (the last season) - in that case nothing
+// is changed here, since ending autumn ends the game rather than advancing
+// to a season that doesn't exist; the caller should prompt to finalize
+// scores and call CompleteGame instead.
+func AdvanceSeason(g *Game) bool {
+	next, ok := NextSeason(g.Season)
+	if !ok {
+		return true
+	}
+	if g.Trackers.Markers == nil {
+		g.Trackers.Markers = map[string]int{}
+	}
+	g.Trackers.Markers["sun"] = 0
+	g.Trackers.Markers["moon"] = 0
+	RandomizeSkunks(g)
+	for i := range g.Players {
+		if g.Players[i].Resources == nil {
+			g.Players[i].Resources = map[string]int{}
+		}
+		g.Players[i].Resources["worker"] = StartingWorkers
+	}
+	g.Season = next
+	return false
 }

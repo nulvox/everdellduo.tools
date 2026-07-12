@@ -209,6 +209,8 @@ func mutateGame(args []js.Value) string {
 			return fail(err)
 		}
 		model.RemoveSkunk(&game, p.Index)
+	case "advanceSeason":
+		model.AdvanceSeason(&game)
 	case "completeGame":
 		model.CompleteGame(&game)
 	default:

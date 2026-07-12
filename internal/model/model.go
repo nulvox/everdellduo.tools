@@ -79,21 +79,42 @@ func NewTrackers() Trackers {
 
 // DefaultResourceOrder is the display order for the standard Everdell
 // resources. Players/games are free to add other named resources too.
-var DefaultResourceOrder = []string{"berry", "twig", "resin", "pebble", "stopwatch"}
+var DefaultResourceOrder = []string{"worker", "berry", "twig", "resin", "pebble", "stopwatch"}
 
-// NewDefaultResources returns the standard starting resource map, all at
-// zero. "stopwatch" is a scored resource capped at 0-2 per chapter, not a
-// live countdown timer.
+// StartingWorkers is how many workers a player has available at the start
+// of a game, and how many they're reset to at the start of each season.
+const StartingWorkers = 3
+
+// NewDefaultResources returns the standard starting resource map. "worker"
+// starts at StartingWorkers since a fresh game begins in winter; everything
+// else starts at zero. "stopwatch" is a scored resource capped at 0-2 per
+// chapter, not a live countdown timer.
 func NewDefaultResources() map[string]int {
 	r := make(map[string]int, len(DefaultResourceOrder))
 	for _, name := range DefaultResourceOrder {
 		r[name] = 0
 	}
+	r["worker"] = StartingWorkers
 	return r
 }
 
 // StopwatchCap is the maximum number of stopwatches a player may hold.
 const StopwatchCap = 2
+
+// Season identifies the current season within a game. Games always begin
+// in winter and progress winter -> spring -> summer -> autumn; there is no
+// season after autumn; ending it ends the game.
+type Season string
+
+const (
+	SeasonWinter Season = "winter"
+	SeasonSpring Season = "spring"
+	SeasonSummer Season = "summer"
+	SeasonAutumn Season = "autumn"
+)
+
+// SeasonOrder is the fixed progression of seasons within a single game.
+var SeasonOrder = []Season{SeasonWinter, SeasonSpring, SeasonSummer, SeasonAutumn}
 
 // PlayerState is one player's live state within a Game.
 type PlayerState struct {
@@ -127,6 +148,7 @@ type Game struct {
 	Players     []PlayerState `json:"players"`
 	Events      []Event       `json:"events"`
 	Trackers    Trackers      `json:"trackers"`
+	Season      Season        `json:"season"`
 	Status      GameStatus    `json:"status"`
 	StartedAt   time.Time     `json:"startedAt"`
 	CompletedAt *time.Time    `json:"completedAt,omitempty"`
@@ -145,6 +167,7 @@ func NewGame(id string, gameType GameType, playerNames []string) Game {
 		Players:   players,
 		Events:    []Event{},
 		Trackers:  NewTrackers(),
+		Season:    SeasonWinter,
 		Status:    StatusInProgress,
 		StartedAt: time.Now().UTC(),
 	}

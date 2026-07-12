@@ -14,8 +14,12 @@ func TestNewGroupNonCampaign(t *testing.T) {
 		t.Fatalf("expected 2 players, got %d", len(g.Game.Players))
 	}
 	for _, name := range DefaultResourceOrder {
-		if g.Game.Players[0].Resources[name] != 0 {
-			t.Fatalf("expected resource %s to start at 0", name)
+		want := 0
+		if name == "worker" {
+			want = StartingWorkers
+		}
+		if g.Game.Players[0].Resources[name] != want {
+			t.Fatalf("expected resource %s to start at %d, got %d", name, want, g.Game.Players[0].Resources[name])
 		}
 	}
 }

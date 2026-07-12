@@ -75,6 +75,15 @@ main { max-width: 960px; margin: 2rem auto; padding: 0 1rem 3rem; }
   margin-bottom: 1rem;
 }
 
+.season-badge {
+  background: var(--accent-2);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
 .btn {
   font-family: inherit;
   border: none;

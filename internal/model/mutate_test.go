@@ -134,6 +134,108 @@ func TestMarkerAndComplete(t *testing.T) {
 	}
 }
 
+func TestNextSeasonProgression(t *testing.T) {
+	cases := []struct {
+		in       Season
+		wantNext Season
+		wantOK   bool
+	}{
+		{SeasonWinter, SeasonSpring, true},
+		{SeasonSpring, SeasonSummer, true},
+		{SeasonSummer, SeasonAutumn, true},
+		{SeasonAutumn, "", false},
+		{"", SeasonSpring, true}, // unrecognized treated as winter
+	}
+	for _, c := range cases {
+		next, ok := NextSeason(c.in)
+		if next != c.wantNext || ok != c.wantOK {
+			t.Fatalf("NextSeason(%q) = (%q, %v), want (%q, %v)", c.in, next, ok, c.wantNext, c.wantOK)
+		}
+	}
+}
+
+func TestRandomizeSkunksWithRandNudgesOnCollisionAndWraps(t *testing.T) {
+	game := NewGame("gid", GameTypeChallenge, []string{"Ash"})
+	_ = AddSkunk(&game, SkunkZoneMeadow)
+	_ = AddSkunk(&game, SkunkZoneMeadow)
+	_ = AddSkunk(&game, SkunkZoneMeadow)
+	// A rand source that always returns 5 (=> candidate position 6 every
+	// time) forces every skunk to collide and nudge/wrap: 6, then 1, then 2.
+	alwaysFive := func(n int) int { return 5 }
+	RandomizeSkunksWithRand(&game, alwaysFive)
+
+	seen := map[int]bool{}
+	for _, s := range game.Trackers.Skunks {
+		if s.Position < 1 || s.Position > MaxMarkerPosition {
+			t.Fatalf("expected position in [1,%d], got %d", MaxMarkerPosition, s.Position)
+		}
+		if seen[s.Position] {
+			t.Fatalf("expected unique positions within zone, got duplicate %d", s.Position)
+		}
+		seen[s.Position] = true
+	}
+	if game.Trackers.Skunks[0].Position != 6 || game.Trackers.Skunks[1].Position != 1 || game.Trackers.Skunks[2].Position != 2 {
+		t.Fatalf("expected nudge/wrap sequence 6,1,2; got %+v", game.Trackers.Skunks)
+	}
+}
+
+func TestRandomizeSkunksNeverPlacesOnZero(t *testing.T) {
+	game := NewGame("gid", GameTypeChallenge, []string{"Ash"})
+	_ = AddSkunk(&game, SkunkZoneFarm)
+	alwaysZero := func(n int) int { return 0 } // candidate position 1
+	RandomizeSkunksWithRand(&game, alwaysZero)
+	if game.Trackers.Skunks[0].Position != 1 {
+		t.Fatalf("expected position 1, got %d", game.Trackers.Skunks[0].Position)
+	}
+}
+
+func TestAdvanceSeasonResetsBoardAndProgresses(t *testing.T) {
+	game := NewGame("gid", GameTypeChallenge, []string{"Ash", "Bay"})
+	if game.Season != SeasonWinter {
+		t.Fatalf("expected new game to start in winter, got %s", game.Season)
+	}
+	AdjustMarker(&game, "sun", 4)
+	AdjustMarker(&game, "moon", 3)
+	_ = AddSkunk(&game, SkunkZoneMeadow)
+	_ = AdjustResource(&game, "Ash", "worker", -2)
+	if game.Players[0].Resources["worker"] != 1 {
+		t.Fatalf("expected Ash to have 1 worker left, got %d", game.Players[0].Resources["worker"])
+	}
+
+	gameOver := AdvanceSeason(&game)
+	if gameOver {
+		t.Fatal("did not expect game over when advancing from winter")
+	}
+	if game.Season != SeasonSpring {
+		t.Fatalf("expected season to advance to spring, got %s", game.Season)
+	}
+	if game.Trackers.Markers["sun"] != 0 || game.Trackers.Markers["moon"] != 0 {
+		t.Fatalf("expected sun/moon reset to 0, got sun=%d moon=%d", game.Trackers.Markers["sun"], game.Trackers.Markers["moon"])
+	}
+	for _, p := range game.Players {
+		if p.Resources["worker"] != StartingWorkers {
+			t.Fatalf("expected %s to have %d workers, got %d", p.Name, StartingWorkers, p.Resources["worker"])
+		}
+	}
+}
+
+func TestAdvanceSeasonSignalsGameOverAtAutumn(t *testing.T) {
+	game := NewGame("gid", GameTypeChallenge, []string{"Ash"})
+	game.Season = SeasonAutumn
+	AdjustMarker(&game, "sun", 3)
+
+	gameOver := AdvanceSeason(&game)
+	if !gameOver {
+		t.Fatal("expected AdvanceSeason to signal game over at autumn")
+	}
+	if game.Season != SeasonAutumn {
+		t.Fatalf("expected season to remain autumn, got %s", game.Season)
+	}
+	if game.Trackers.Markers["sun"] != 3 {
+		t.Fatalf("expected sun marker untouched at 3, got %d", game.Trackers.Markers["sun"])
+	}
+}
+
 func TestChapterGameFlow(t *testing.T) {
 	campaign := Campaign{}
 	AddChapter(&campaign, "Chapter 1: Roots")

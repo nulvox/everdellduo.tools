@@ -73,6 +73,11 @@ User clicks a stepper / toggles a checkbox / submits a form
 5. **Flexible data model for future formats**: resources are a `map[string]int`, not fixed struct fields; `GameType` is a string, not a closed enum; trackers use a markers map plus a slice of zoned skunks. When adding a new Everdell format, prefer extending these generic containers over adding new fixed fields.
 6. **GitHub Pages via `docs/`**: `make build` outputs everything needed to `docs/`, which is what GitHub Pages serves from `main`.
 
+## Season Mechanics
+
+- A game tracks a `Season` (`winter` -> `spring` -> `summer` -> `autumn`, always starting at `winter`). The "New season" button calls `AdvanceSeason`, which: resets sun/moon to 0, re-randomizes all skunk positions within their zones (1-6, never 0, nudging/wrapping on collision), resets every player's `worker` resource to `StartingWorkers` (3), and advances to the next season.
+- If the game is already in `autumn` when "New season" is clicked, there is no fifth season to advance to — this is the game-over trigger. The frontend prompts the player to review score-breakdown entries, then calls `completeGame` directly instead of `advanceSeason`.
+
 ## Everdell Duo Reference Notes
 
 - Game types offered when creating a group: `challenge`, `duel`, `coop`, `campaign`.

@@ -21,7 +21,7 @@ Go WASM serves as the logic backend. It exposes functions to JavaScript via `sys
 - `everdellduoNewGroup(name, gameType, playersJSON)` — create a new Group
 - `everdellduoAddChapter(campaignJSON, name)` — append a chapter to a campaign
 - `everdellduoStartChapterGame(campaignJSON, chapterIndex, gameType, playersJSON)` — start a new game attempt within a chapter
-- `everdellduoMutateGame(gameJSON, op, payloadJSON)` — apply one of a fixed set of mutations to a live Game (adjustResource, setScoreBreakdown, addEvent, removeEvent, setEventAchieved, adjustMarker, addSkunk, setSkunkPosition, setSkunkZone, removeSkunk, completeGame)
+- `everdellduoMutateGame(gameJSON, op, payloadJSON)` — apply one of a fixed set of mutations to a live Game (adjustResource, setScoreBreakdown, addEvent, removeEvent, setEventAchieved, adjustMarker, addSkunk, setSkunkPosition, setSkunkZone, removeSkunk, advanceSeason, completeGame)
 - `everdellduoComputeScorecard(campaignJSON)` — compute the running per-player scorecard from a campaign's completed games
 - `everdellduoExportBackup(groupsJSON)` / `everdellduoImportBackup(backupJSON)` — durable backup serialization
 
@@ -102,11 +102,13 @@ everdellduo.tools/
 
 - **Group**: top-level durable artifact — id, name, gameType (`challenge`/`duel`/`coop`/`campaign`, but stored as a plain string so other formats can be added later), players, timestamps, and either a `Game` (non-campaign) or a `Campaign` (campaign type).
 - **Game**: live/current game state — players (each with a resource map and score/score breakdown), events, board trackers, status, timestamps, notes.
-- **Resources**: a `map[string]int` per player, not a fixed struct, so different formats can use different resource sets. Defaults: `berry`, `twig`, `resin`, `pebble`, `stopwatch`.
+- **Resources**: a `map[string]int` per player, not a fixed struct, so different formats can use different resource sets. Defaults: `worker`, `berry`, `twig`, `resin`, `pebble`, `stopwatch`.
   - `stopwatch` is a **scored resource capped at 0-2**, not a live countdown timer. It is recorded into the score breakdown like any other category.
+  - `worker` starts at `StartingWorkers` (3) and is reset to 3 for every player each time `AdvanceSeason` runs — it represents workers available to send out that season, not a scored total.
 - **Events**: `{name, achieved, achievedBy}` — free-form list, add/remove/toggle at will.
 - **Trackers**: `{markers: map[string]int, skunks: []Skunk}`. `markers` defaults to `sun` and `moon` at position 0 and is clamped to `[0,6]` (`internal/model.MinMarkerPosition`/`MaxMarkerPosition`). Each `Skunk` is `{zone, position}` where `zone` is one of `events`/`meadow`/`farm`; a skunk's position only has to be unique among other skunks in the *same* zone. Meadow skunks are special: `AdjustMarker` moves the sun/moon one logical step at a time and skips over any position occupied by a meadow skunk, so the marker "hops" them. `AddSkunk`/`SetSkunkZone` auto-place at the next free position in the target zone; `SetSkunkPosition` rejects a move onto an already-occupied position in the same zone (`ErrSkunkPositionTaken`).
 - **Campaign**: an ordered list of `Chapter`s, each with a name and a list of `Game` attempts. The running scorecard is *computed*, not stored, by summing each **completed** game's player scores across all chapters (`internal/scorecard`). In-progress attempts are ignored until completed.
+- **Season**: a `Game` tracks a `Season` (`winter`/`spring`/`summer`/`autumn`, always starting at `winter`). `AdvanceSeason` performs the full "new season" sequence: reset sun/moon markers to 0, re-randomize every skunk's position within its zone (`RandomizeSkunks`, positions 1-6, meadow-blocking rules from `Trackers` still apply to markers, not to the randomization itself), reset every player's `worker` resource to `StartingWorkers`, and advance to the next season. If the game is already in `autumn`, `AdvanceSeason` makes no changes and returns `true` ("game over") — the frontend uses this to prompt the player to double-check score-breakdown entries before calling `completeGame` instead of starting a nonexistent fifth season.
 
 ## Key UX Requirements
 

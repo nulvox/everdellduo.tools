@@ -1,10 +1,18 @@
 (function () {
   const RESOURCE_META = {
+    worker: { icon: "👷", label: "Workers" },
     berry: { icon: "🍓", label: "Berry" },
     twig: { icon: "🪵", label: "Twig" },
-    resin: { icon: "🟤", label: "Resin" },
-    pebble: { icon: "⚪", label: "Pebble" },
+    resin: { icon: "🔶", label: "Resin" },
+    pebble: { icon: "🪨", label: "Pebble" },
     stopwatch: { icon: "⏱️", label: "Stopwatch" },
+  };
+
+  const SEASON_META = {
+    winter: { icon: "❄️", label: "Winter" },
+    spring: { icon: "🌱", label: "Spring" },
+    summer: { icon: "☀️", label: "Summer" },
+    autumn: { icon: "🍂", label: "Autumn" },
   };
 
   const SCORE_CATEGORIES = ["cards", "events", "journey", "prosperity", "stopwatches"];
@@ -35,6 +43,18 @@
       view.querySelector(".group-title").textContent = opts.title;
       view.querySelector(".btn-back").addEventListener("click", () => opts.onBack());
 
+      const season = game.season || "winter";
+      const seasonMeta = SEASON_META[season] || { icon: "🌀", label: season };
+      view.querySelector(".season-badge").textContent = `${seasonMeta.icon} ${seasonMeta.label}`;
+
+      const completeGame = () => {
+        const updated = EDWasm.mutateGame(game, "completeGame", {});
+        game = updated;
+        opts.onChange(game);
+        if (opts.onComplete) opts.onComplete(game);
+        draw();
+      };
+
       const completeBtn = view.querySelector(".btn-complete-game");
       if (game.status === "completed") {
         completeBtn.textContent = "✅ Completed";
@@ -45,11 +65,34 @@
       }
       completeBtn.addEventListener("click", () => {
         if (!confirm("Mark this game complete? Scores will be locked into the record.")) return;
-        const updated = EDWasm.mutateGame(game, "completeGame", {});
-        game = updated;
-        opts.onChange(game);
-        if (opts.onComplete) opts.onComplete(game);
-        draw();
+        completeGame();
+      });
+
+      const newSeasonBtn = view.querySelector(".btn-new-season");
+      if (game.status === "completed") {
+        newSeasonBtn.disabled = true;
+      }
+      newSeasonBtn.addEventListener("click", () => {
+        if (season === "autumn") {
+          if (
+            !confirm(
+              "Autumn just ended — the game is over! Double-check each player's score breakdown " +
+                "(cards, events, journey, prosperity, stopwatches) before finalizing. Ready to record the game?"
+            )
+          ) {
+            return;
+          }
+          completeGame();
+          return;
+        }
+        if (
+          !confirm(
+            "Start a new season? This resets Sun/Moon to 0, re-randomizes the skunks, and resets everyone's workers to 3."
+          )
+        ) {
+          return;
+        }
+        mutate("advanceSeason", {});
       });
 
       // Markers (sun / moon)
