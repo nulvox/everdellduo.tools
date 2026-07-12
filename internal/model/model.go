@@ -29,13 +29,43 @@ type Event struct {
 	AchievedBy string `json:"achievedBy,omitempty"`
 }
 
+// SkunkZone identifies which board zone a skunk marker occupies. Everdell
+// Duo's Challenge mode roams skunks across three zones; a skunk's position
+// is only meaningful relative to other skunks in the same zone.
+type SkunkZone string
+
+const (
+	SkunkZoneEvents SkunkZone = "events"
+	SkunkZoneMeadow SkunkZone = "meadow"
+	SkunkZoneFarm   SkunkZone = "farm"
+)
+
+// KnownSkunkZones lists the valid zones a skunk can be placed in.
+var KnownSkunkZones = []SkunkZone{SkunkZoneEvents, SkunkZoneMeadow, SkunkZoneFarm}
+
+// Skunk is one roaming skunk marker. Position is unique among skunks that
+// share the same Zone (two skunks may share a position only if they are in
+// different zones).
+type Skunk struct {
+	Zone     SkunkZone `json:"zone"`
+	Position int       `json:"position"`
+}
+
+// MinMarkerPosition and MaxMarkerPosition bound the sun/moon track. The
+// track tops out at 6 and does not go negative.
+const (
+	MinMarkerPosition = 0
+	MaxMarkerPosition = 6
+)
+
 // Trackers holds the position of board markers. Markers is a free-form map
 // so different formats can track whatever named markers they need (e.g.
-// "sun", "moon"). Skunks is a slice because Challenge mode can have more
-// than one skunk marker roaming the event row.
+// "sun", "moon"), clamped to [MinMarkerPosition, MaxMarkerPosition]. Skunks
+// occupy one of three zones (events, meadow, farm); a meadow skunk blocks
+// that space for the sun/moon markers, which must skip over it.
 type Trackers struct {
 	Markers map[string]int `json:"markers"`
-	Skunks  []int          `json:"skunks"`
+	Skunks  []Skunk        `json:"skunks"`
 }
 
 // NewTrackers returns a Trackers with the default sun/moon markers at 0 and
@@ -43,7 +73,7 @@ type Trackers struct {
 func NewTrackers() Trackers {
 	return Trackers{
 		Markers: map[string]int{"sun": 0, "moon": 0},
-		Skunks:  []int{},
+		Skunks:  []Skunk{},
 	}
 }
 

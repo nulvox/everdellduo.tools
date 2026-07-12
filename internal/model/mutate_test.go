@@ -67,11 +67,28 @@ func TestEventLifecycle(t *testing.T) {
 
 func TestSkunkLifecycle(t *testing.T) {
 	game := NewGame("gid", GameTypeChallenge, []string{"Ash"})
-	AddSkunk(&game, 3)
-	AddSkunk(&game, 5)
-	SetSkunkPosition(&game, 0, 4)
-	if game.Trackers.Skunks[0] != 4 {
-		t.Fatalf("expected skunk 0 at 4, got %d", game.Trackers.Skunks[0])
+	_ = AddSkunk(&game, SkunkZoneEvents)
+	_ = AddSkunk(&game, SkunkZoneEvents)
+	if game.Trackers.Skunks[0].Position != 0 || game.Trackers.Skunks[1].Position != 1 {
+		t.Fatalf("expected auto-placed positions 0 and 1, got %+v", game.Trackers.Skunks)
+	}
+	if err := SetSkunkPosition(&game, 0, 1); err != ErrSkunkPositionTaken {
+		t.Fatalf("expected ErrSkunkPositionTaken, got %v", err)
+	}
+	if err := SetSkunkPosition(&game, 0, 4); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if game.Trackers.Skunks[0].Position != 4 {
+		t.Fatalf("expected skunk 0 at 4, got %d", game.Trackers.Skunks[0].Position)
+	}
+	if err := SetSkunkZone(&game, 0, SkunkZoneMeadow); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if game.Trackers.Skunks[0].Zone != SkunkZoneMeadow || game.Trackers.Skunks[0].Position != 0 {
+		t.Fatalf("expected skunk moved to meadow at 0, got %+v", game.Trackers.Skunks[0])
+	}
+	if err := AddSkunk(&game, "lake"); err != ErrInvalidSkunkZone {
+		t.Fatalf("expected ErrInvalidSkunkZone, got %v", err)
 	}
 	RemoveSkunk(&game, 1)
 	if len(game.Trackers.Skunks) != 1 {
@@ -79,9 +96,35 @@ func TestSkunkLifecycle(t *testing.T) {
 	}
 }
 
+func TestAdjustMarkerClampsAtSix(t *testing.T) {
+	game := NewGame("gid", GameTypeDuel, []string{"Ash"})
+	AdjustMarker(&game, "sun", 10)
+	if game.Trackers.Markers["sun"] != MaxMarkerPosition {
+		t.Fatalf("expected sun clamped to %d, got %d", MaxMarkerPosition, game.Trackers.Markers["sun"])
+	}
+	AdjustMarker(&game, "sun", -20)
+	if game.Trackers.Markers["sun"] != MinMarkerPosition {
+		t.Fatalf("expected sun clamped to %d, got %d", MinMarkerPosition, game.Trackers.Markers["sun"])
+	}
+}
+
+func TestAdjustMarkerSkipsMeadowSkunks(t *testing.T) {
+	game := NewGame("gid", GameTypeChallenge, []string{"Ash"})
+	_ = AddSkunk(&game, SkunkZoneMeadow) // lands at position 0
+	_ = SetSkunkPosition(&game, 0, 1)
+	_ = AddSkunk(&game, SkunkZoneMeadow) // lands at position 0 (1 is taken)
+
+	// Sun starts at 0, occupied meadow cells are at 0 and 1. Moving one
+	// logical step forward must skip both, landing on 2.
+	AdjustMarker(&game, "sun", 1)
+	if game.Trackers.Markers["sun"] != 2 {
+		t.Fatalf("expected sun to skip occupied meadow cells and land on 2, got %d", game.Trackers.Markers["sun"])
+	}
+}
+
 func TestMarkerAndComplete(t *testing.T) {
 	game := NewGame("gid", GameTypeDuel, []string{"Ash"})
-	SetMarker(&game, "sun", 2)
+	AdjustMarker(&game, "sun", 2)
 	if game.Trackers.Markers["sun"] != 2 {
 		t.Fatalf("expected sun marker at 2, got %d", game.Trackers.Markers["sun"])
 	}

@@ -115,6 +115,7 @@
     <div class="tracker-grid">
       <section class="tracker-block">
         <h3>☀️ Sun &amp; 🌙 Moon</h3>
+        <p class="hint">Track tops out at 6. Meadow skunks block a space, so the marker hops over them.</p>
         <div class="marker-row" data-marker="sun">
           <span>Sun</span>
           <button class="btn btn-tiny marker-dec">-</button>
@@ -132,7 +133,14 @@
       <section class="tracker-block">
         <h3>🦨 Skunks</h3>
         <ul class="skunk-list"></ul>
-        <button class="btn btn-small btn-add-skunk">+ Add skunk</button>
+        <div class="add-skunk-row">
+          <select class="add-skunk-zone">
+            <option value="events">📜 Events</option>
+            <option value="meadow">🌾 Meadow</option>
+            <option value="farm">🚜 Farm</option>
+          </select>
+          <button class="btn btn-small btn-add-skunk">+ Add skunk</button>
+        </div>
       </section>
 
       <section class="tracker-block events-block">

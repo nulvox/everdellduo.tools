@@ -9,6 +9,12 @@
 
   const SCORE_CATEGORIES = ["cards", "events", "journey", "prosperity", "stopwatches"];
 
+  const SKUNK_ZONE_LABELS = {
+    events: "📜 Events",
+    meadow: "🌾 Meadow",
+    farm: "🚜 Farm",
+  };
+
   // Renders a live game tracker into `root`.
   // opts: { title, game, onChange(updatedGame), onBack(), onComplete(updatedGame), hideComplete }
   function renderGameTracker(root, opts) {
@@ -51,36 +57,72 @@
         const name = row.dataset.marker;
         const value = (game.trackers.markers && game.trackers.markers[name]) || 0;
         row.querySelector(".marker-value").textContent = value;
-        row.querySelector(".marker-dec").addEventListener("click", () =>
-          mutate("setMarker", { name, position: value - 1 })
-        );
-        row.querySelector(".marker-inc").addEventListener("click", () =>
-          mutate("setMarker", { name, position: value + 1 })
-        );
+        row.querySelector(".marker-dec").addEventListener("click", () => mutate("adjustMarker", { name, delta: -1 }));
+        row.querySelector(".marker-inc").addEventListener("click", () => mutate("adjustMarker", { name, delta: 1 }));
       });
 
       // Skunks
       const skunkList = view.querySelector(".skunk-list");
-      (game.trackers.skunks || []).forEach((position, i) => {
+      (game.trackers.skunks || []).forEach((skunk, i) => {
         const li = document.createElement("li");
         li.className = "skunk-row";
-        li.innerHTML = `🦨 <span class="skunk-value">${position}</span>`;
+
+        const label = document.createElement("span");
+        label.textContent = "🦨";
+        li.appendChild(label);
+
+        const zoneSelect = document.createElement("select");
+        zoneSelect.className = "skunk-zone-select";
+        Object.keys(SKUNK_ZONE_LABELS).forEach((zone) => {
+          const option = document.createElement("option");
+          option.value = zone;
+          option.textContent = SKUNK_ZONE_LABELS[zone];
+          if (zone === skunk.zone) option.selected = true;
+          zoneSelect.appendChild(option);
+        });
+        zoneSelect.addEventListener("change", () => {
+          try {
+            mutate("setSkunkZone", { index: i, zone: zoneSelect.value });
+          } catch (e) {
+            alert(e.message);
+          }
+        });
+
+        const posValue = document.createElement("span");
+        posValue.className = "skunk-value";
+        posValue.textContent = skunk.position;
+
         const dec = document.createElement("button");
         dec.className = "btn btn-tiny";
         dec.textContent = "-";
-        dec.addEventListener("click", () => mutate("setSkunkPosition", { index: i, position: position - 1 }));
+        dec.addEventListener("click", () => {
+          try {
+            mutate("setSkunkPosition", { index: i, position: skunk.position - 1 });
+          } catch (e) {
+            alert(e.message);
+          }
+        });
         const inc = document.createElement("button");
         inc.className = "btn btn-tiny";
         inc.textContent = "+";
-        inc.addEventListener("click", () => mutate("setSkunkPosition", { index: i, position: position + 1 }));
+        inc.addEventListener("click", () => {
+          try {
+            mutate("setSkunkPosition", { index: i, position: skunk.position + 1 });
+          } catch (e) {
+            alert(e.message);
+          }
+        });
         const rm = document.createElement("button");
         rm.className = "btn btn-tiny btn-danger";
         rm.textContent = "✕";
         rm.addEventListener("click", () => mutate("removeSkunk", { index: i }));
-        li.append(dec, inc, rm);
+        li.append(zoneSelect, dec, posValue, inc, rm);
         skunkList.appendChild(li);
       });
-      view.querySelector(".btn-add-skunk").addEventListener("click", () => mutate("addSkunk", { position: 0 }));
+      const addSkunkZoneSelect = view.querySelector(".add-skunk-zone");
+      view.querySelector(".btn-add-skunk").addEventListener("click", () => {
+        mutate("addSkunk", { zone: addSkunkZoneSelect.value });
+      });
 
       // Events
       const eventList = view.querySelector(".event-list");

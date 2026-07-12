@@ -160,23 +160,25 @@ func mutateGame(args []js.Value) string {
 			return fail(err)
 		}
 		model.SetEventAchieved(&game, p.Index, p.Achieved, p.AchievedBy)
-	case "setMarker":
+	case "adjustMarker":
 		var p struct {
-			Name     string `json:"name"`
-			Position int    `json:"position"`
+			Name  string `json:"name"`
+			Delta int    `json:"delta"`
 		}
 		if err := json.Unmarshal([]byte(payload), &p); err != nil {
 			return fail(err)
 		}
-		model.SetMarker(&game, p.Name, p.Position)
+		model.AdjustMarker(&game, p.Name, p.Delta)
 	case "addSkunk":
 		var p struct {
-			Position int `json:"position"`
+			Zone string `json:"zone"`
 		}
 		if err := json.Unmarshal([]byte(payload), &p); err != nil {
 			return fail(err)
 		}
-		model.AddSkunk(&game, p.Position)
+		if err := model.AddSkunk(&game, model.SkunkZone(p.Zone)); err != nil {
+			return fail(err)
+		}
 	case "setSkunkPosition":
 		var p struct {
 			Index    int `json:"index"`
@@ -185,7 +187,20 @@ func mutateGame(args []js.Value) string {
 		if err := json.Unmarshal([]byte(payload), &p); err != nil {
 			return fail(err)
 		}
-		model.SetSkunkPosition(&game, p.Index, p.Position)
+		if err := model.SetSkunkPosition(&game, p.Index, p.Position); err != nil {
+			return fail(err)
+		}
+	case "setSkunkZone":
+		var p struct {
+			Index int    `json:"index"`
+			Zone  string `json:"zone"`
+		}
+		if err := json.Unmarshal([]byte(payload), &p); err != nil {
+			return fail(err)
+		}
+		if err := model.SetSkunkZone(&game, p.Index, model.SkunkZone(p.Zone)); err != nil {
+			return fail(err)
+		}
 	case "removeSkunk":
 		var p struct {
 			Index int `json:"index"`

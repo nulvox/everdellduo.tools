@@ -13,6 +13,18 @@ var ErrPlayerNotFound = errors.New("player not found")
 // count outside the 0-2 range.
 var ErrStopwatchCap = errors.New("stopwatch count must stay between 0 and 2")
 
+// ErrInvalidSkunkZone is returned when a skunk operation references a zone
+// other than events, meadow, or farm.
+var ErrInvalidSkunkZone = errors.New("invalid skunk zone")
+
+// ErrSkunkPositionTaken is returned when a skunk would move onto a
+// position already occupied by another skunk in the same zone.
+var ErrSkunkPositionTaken = errors.New("skunk position already taken in this zone")
+
+// ErrSkunkNotFound is returned when a skunk operation references an
+// out-of-range index.
+var ErrSkunkNotFound = errors.New("skunk not found")
+
 func findPlayer(g *Game, name string) *PlayerState {
 	for i := range g.Players {
 		if g.Players[i].Name == name {
@@ -102,25 +114,121 @@ func SetEventAchieved(g *Game, i int, achieved bool, achievedBy string) {
 	}
 }
 
-// SetMarker sets a named board marker (e.g. "sun", "moon") to a position.
-func SetMarker(g *Game, name string, position int) {
+func validSkunkZone(zone SkunkZone) bool {
+	for _, z := range KnownSkunkZones {
+		if z == zone {
+			return true
+		}
+	}
+	return false
+}
+
+func meadowOccupiedPositions(g *Game) map[int]bool {
+	occ := map[int]bool{}
+	for _, s := range g.Trackers.Skunks {
+		if s.Zone == SkunkZoneMeadow {
+			occ[s.Position] = true
+		}
+	}
+	return occ
+}
+
+// AdjustMarker moves a named board marker (e.g. "sun", "moon") by delta,
+// one step at a time, skipping over any position occupied by a meadow
+// skunk and clamping to [MinMarkerPosition, MaxMarkerPosition].
+func AdjustMarker(g *Game, name string, delta int) {
 	if g.Trackers.Markers == nil {
 		g.Trackers.Markers = map[string]int{}
 	}
-	g.Trackers.Markers[name] = position
-}
-
-// AddSkunk appends a new skunk marker at the given position.
-func AddSkunk(g *Game, position int) {
-	g.Trackers.Skunks = append(g.Trackers.Skunks, position)
-}
-
-// SetSkunkPosition updates the position of the skunk marker at index i.
-func SetSkunkPosition(g *Game, i, position int) {
-	if i < 0 || i >= len(g.Trackers.Skunks) {
-		return
+	step := 1
+	remaining := delta
+	if delta < 0 {
+		step = -1
+		remaining = -delta
 	}
-	g.Trackers.Skunks[i] = position
+	occ := meadowOccupiedPositions(g)
+	pos := g.Trackers.Markers[name]
+	for i := 0; i < remaining; i++ {
+		next := pos + step
+		for next >= MinMarkerPosition && next <= MaxMarkerPosition && occ[next] {
+			next += step
+		}
+		if next < MinMarkerPosition {
+			pos = MinMarkerPosition
+			break
+		}
+		if next > MaxMarkerPosition {
+			pos = MaxMarkerPosition
+			break
+		}
+		pos = next
+	}
+	g.Trackers.Markers[name] = pos
+}
+
+// NextFreeSkunkPosition returns the smallest non-negative position not
+// already occupied by another skunk in the given zone.
+func NextFreeSkunkPosition(g *Game, zone SkunkZone) int {
+	occ := map[int]bool{}
+	for _, s := range g.Trackers.Skunks {
+		if s.Zone == zone {
+			occ[s.Position] = true
+		}
+	}
+	pos := 0
+	for occ[pos] {
+		pos++
+	}
+	return pos
+}
+
+// AddSkunk appends a new skunk marker to the given zone, automatically
+// placed at the next free position in that zone.
+func AddSkunk(g *Game, zone SkunkZone) error {
+	if !validSkunkZone(zone) {
+		return ErrInvalidSkunkZone
+	}
+	pos := NextFreeSkunkPosition(g, zone)
+	g.Trackers.Skunks = append(g.Trackers.Skunks, Skunk{Zone: zone, Position: pos})
+	return nil
+}
+
+// SetSkunkPosition moves the skunk at index i to a new position within its
+// current zone. Returns ErrSkunkPositionTaken if another skunk already
+// occupies that position in the same zone.
+func SetSkunkPosition(g *Game, i, position int) error {
+	if i < 0 || i >= len(g.Trackers.Skunks) {
+		return ErrSkunkNotFound
+	}
+	if position < 0 {
+		position = 0
+	}
+	zone := g.Trackers.Skunks[i].Zone
+	for j, s := range g.Trackers.Skunks {
+		if j != i && s.Zone == zone && s.Position == position {
+			return ErrSkunkPositionTaken
+		}
+	}
+	g.Trackers.Skunks[i].Position = position
+	return nil
+}
+
+// SetSkunkZone moves the skunk at index i into a new zone, automatically
+// placing it at the next free position within that zone.
+func SetSkunkZone(g *Game, i int, zone SkunkZone) error {
+	if i < 0 || i >= len(g.Trackers.Skunks) {
+		return ErrSkunkNotFound
+	}
+	if !validSkunkZone(zone) {
+		return ErrInvalidSkunkZone
+	}
+	if g.Trackers.Skunks[i].Zone == zone {
+		return nil
+	}
+	pos := NextFreeSkunkPosition(g, zone)
+	g.Trackers.Skunks[i].Zone = zone
+	g.Trackers.Skunks[i].Position = pos
+	return nil
 }
 
 // RemoveSkunk removes the skunk marker at index i.

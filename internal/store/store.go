@@ -13,7 +13,12 @@ import (
 
 // BackupVersion is stamped into every exported backup so future versions of
 // the app can detect and migrate older backups.
-const BackupVersion = 1
+//
+// v2: skunks changed from a bare position int to {zone, position}, and
+// sun/moon markers are now clamped to [0,6] with meadow-skunk collision
+// avoidance. Backups from v1 will fail to parse cleanly and must be
+// re-exported from an older build if ever needed.
+const BackupVersion = 2
 
 // Summary is the lightweight manifest entry shown in the group list.
 type Summary struct {
