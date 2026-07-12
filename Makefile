@@ -3,6 +3,7 @@
 WASM_OUT = docs/main.wasm
 WASM_EXEC = docs/wasm_exec.js
 GO_WASM_SRC = ./cmd/wasm/
+PORT ?= 8080
 
 build: clean
 	@mkdir -p docs
@@ -25,8 +26,8 @@ lint:
 	GOOS=js GOARCH=wasm golangci-lint run ./...
 
 serve: build
-	@echo "Serving at http://localhost:8080"
-	python3 -m http.server 8080 --directory docs
+	@echo "Serving at http://localhost:$(PORT)"
+	python3 -m http.server $(PORT) --directory docs
 
 clean:
 	rm -rf docs/*
