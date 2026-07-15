@@ -89,9 +89,11 @@ func SetScore(g *Game, playerName string, score int) error {
 }
 
 // SetScoreBreakdownEntry sets one named component of a player's score
-// breakdown (e.g. "cards", "events", "journey", "prosperity",
-// "stopwatches") and recomputes the player's total as the sum of all
-// breakdown entries.
+// breakdown (e.g. "cards" [1 point per card in hand, displayed to
+// players as "Cards (hand)"], "events", "journey", "prosperity") and
+// recomputes the player's total as the sum of all breakdown entries.
+// Team stopwatches are never a scoreable category here - see
+// Game.TeamStopwatches / StopwatchBonusKept.
 func SetScoreBreakdownEntry(g *Game, playerName, category string, value int) error {
 	p := findPlayer(g, playerName)
 	if p == nil {

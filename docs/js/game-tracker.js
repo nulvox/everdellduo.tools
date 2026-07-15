@@ -14,12 +14,21 @@
     autumn: { icon: "🍂", label: "Autumn" },
   };
 
-  const SCORE_CATEGORIES = ["cards", "events", "journey", "prosperity", "stopwatches"];
+  // Team stopwatches are a shared, campaign-only resource (see .team-stopwatch-block)
+  // and are never scored directly by players, so "stopwatches" is not a score category.
+  const SCORE_CATEGORIES = ["cards", "events", "journey", "prosperity"];
   // Journey scoring doesn't apply to campaign chapters (always coop).
   const CAMPAIGN_SCORE_CATEGORIES = SCORE_CATEGORIES.filter((c) => c !== "journey");
 
+  const SCORE_CATEGORY_META = {
+    cards: { icon: "🃏", label: "Cards (hand)" },
+    events: { icon: "📜", label: "Events" },
+    journey: { icon: "🛶", label: "Journey" },
+    prosperity: { icon: "✨", label: "Prosperity" },
+  };
+
   const SKUNK_ZONE_LABELS = {
-    events: "📜 Events",
+    events: "📍 Locations",
     meadow: "🌾 Meadow",
     farm: "🚜 Farm",
   };
@@ -253,7 +262,8 @@
         scoreCategories.forEach((category) => {
           const value = (player.scoreBreakdown && player.scoreBreakdown[category]) || 0;
           const row = document.getElementById("tpl-score-row").content.cloneNode(true);
-          row.querySelector(".score-category-label").textContent = category;
+          const meta = SCORE_CATEGORY_META[category] || { icon: "", label: category };
+          row.querySelector(".score-category-label").textContent = `${meta.icon} ${meta.label}`.trim();
           const input = row.querySelector(".score-category-input");
           input.value = value;
           input.addEventListener("change", () => {
