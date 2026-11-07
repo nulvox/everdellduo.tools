@@ -10,6 +10,9 @@
 *.test
 *.out
 
+# Local Makefile overrides (e.g. custom PORT)
+Makefile.local
+
 # IDE
 .idea/
 .vscode/

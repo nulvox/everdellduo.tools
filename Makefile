@@ -5,6 +5,9 @@ WASM_EXEC = docs/wasm_exec.js
 GO_WASM_SRC = ./cmd/wasm/
 PORT ?= 8080
 
+# Optional local overrides (e.g. `PORT = 9090`), not checked into git.
+-include Makefile.local
+
 build: clean
 	@mkdir -p docs
 	GOOS=js GOARCH=wasm go build -o $(WASM_OUT) $(GO_WASM_SRC)

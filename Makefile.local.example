@@ -1,0 +1,4 @@
+# Copy this file to Makefile.local (which is git-ignored) to override
+# local `make` settings, e.g. a different port for `make serve`.
+
+PORT = 9090
