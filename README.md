@@ -14,7 +14,18 @@ A browser-based group, campaign, and live-game tracker for [Everdell Duo](https:
 - JSON export/import for durable backups — your data lives in `localStorage`, so back it up!
 - Fun woodland theming, with a day/night toggle
 
-## Build
+## Architecture
+
+The application is intentionally static and local-first. Pure Go packages own
+the game model, validation, scorecard calculations, and versioned backup
+format; they compile to WebAssembly for use in the browser. A small vanilla
+JavaScript layer renders the UI and persists groups to `localStorage`. There is
+no application server and selected game data never leaves the browser.
+
+GitHub Pages serves the generated `docs/` directory. JSON import/export is the
+durable backup and transfer path because browser storage can be cleared.
+
+## Build and test
 
 Requires Go 1.23+ and `golangci-lint`.
 
@@ -24,6 +35,10 @@ make test     # Run Go tests
 make lint     # Run golangci-lint
 make serve    # Build and serve locally at http://localhost:8080
 ```
+
+Pure Go tests cover the model, mutations, campaign scorecards, and backup
+round-trips. `make lint` checks both the host-testable packages and the WASM
+build target.
 
 ## Usage
 
